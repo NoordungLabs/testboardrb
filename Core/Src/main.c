@@ -84,8 +84,7 @@ DMA_HandleTypeDef hdma_i2c3_tx;
 DMA_HandleTypeDef hdma_i2c3_rx;
 
 /* USER CODE BEGIN PV */
-float pressureArray[4];
-float temperatureArray[4];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +109,19 @@ void selectMuxPin(uint8_t pin) {
 			}
 		}
 	}
+}
+
+void muxInit(){
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
+
+		//Initialize MUX
+		for (uint8_t i = 0; i < 3; i++) {
+			if (i == 2) {
+				HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
+			} else {
+				HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
+			}
+		}
 }
 
 void startSensorReadSequence() {
@@ -259,8 +271,8 @@ int main(void)
   MX_DMA_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
-
-
+  muxInit();
+  	/*
   	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
 
 	//Initialize MUX
@@ -271,7 +283,8 @@ int main(void)
 			HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
 		}
 	}
-	startSensorReadSequence();
+	*/
+  startSensorReadSequence();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -292,7 +305,8 @@ int main(void)
 
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
 	*/
-	  HAL_
+	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+	  HAL_Delay(100);
 	  valve_set_openness(&bal1, 128);
 	  valve_update(&bal1);
 	  /*
