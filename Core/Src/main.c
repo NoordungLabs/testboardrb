@@ -18,11 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "valve.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "valve.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,9 +37,26 @@
 #define MUXP3	GPIO_PIN_8
 #define MGO		GPIOA
 
-const uint8_t NUM_OF_SENSORS = 4;
+#define NUM_OF_SENSORS 4
+#define RUNAVGAM 10
+#define Fullscale_P 4000.0f
+
+uint8_t currentSensor = 0;
+uint8_t dmaStep = 0;
+
+uint8_t instructionArray[2] = {0x30, 0x0A};
+uint8_t addressArray[1] = {0x06};
+uint8_t receiveArray[5];
+
+float pressureArray[NUM_OF_SENSORS];
+float temperatureArray[NUM_OF_SENSORS];
+float calibration[NUM_OF_SENSORS] = { 1000  / 1.5 / 1.10/5, 300 / 1.40/2, 200, 120.0/1.3, 1, 1, 1, 1, 1, 1 };;
+float tempcal[NUM_OF_SENSORS] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };;
+float runningAveragePressure[NUM_OF_SENSORS][RUNAVGAM];
+float runningAverageTemperature[NUM_OF_SENSORS][RUNAVGAM];
+
 const int selectPins[3] = { GPIO_PIN_10, GPIO_PIN_9, GPIO_PIN_8 };
-const uint8_t RUNAVGAM = 5;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,6 +80,8 @@ ValveController bal1 = {
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c3;
+DMA_HandleTypeDef hdma_i2c3_tx;
+DMA_HandleTypeDef hdma_i2c3_rx;
 
 /* USER CODE BEGIN PV */
 float pressureArray[4];
@@ -73,6 +91,7 @@ float temperatureArray[4];
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_I2C3_Init(void);
 /* USER CODE BEGIN PFP */
 void selectMuxPin(uint8_t pin) {
@@ -92,6 +111,79 @@ void selectMuxPin(uint8_t pin) {
 		}
 	}
 }
+
+void startSensorReadSequence() {
+    currentSensor = 0;
+    dmaStep = 0;
+    selectMuxPin(currentSensor);
+    HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
+}
+
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c != &hi2c3) return;
+
+    if (dmaStep == 0) {
+        dmaStep = 1;
+        HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, addressArray, 1);
+    } else if (dmaStep == 1) {
+        dmaStep = 2;
+        HAL_I2C_Master_Receive_DMA(&hi2c3, 0x7F << 1, receiveArray, 5);
+    }
+}
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c != &hi2c3) return;
+
+    uint32_t rawPressureData = (receiveArray[0] << 16) | (receiveArray[1] << 8) | receiveArray[2];
+    float fpressureData = rawPressureData;
+    float fpressureData2, pressureSum = 0;
+    float temperatureSum = 0;
+
+    if (fpressureData >= 8388608) {
+        fpressureData2 = (fpressureData - 16777216.0f) * Fullscale_P * calibration[currentSensor] / 8388608.0f;
+    } else {
+        fpressureData2 = fpressureData / 8388608.0f * Fullscale_P * calibration[currentSensor];
+    }
+    float truePressureData = fpressureData2;
+
+    for (uint8_t j = 0; j < RUNAVGAM; j++) {
+        if (j == RUNAVGAM - 1) {
+            runningAveragePressure[currentSensor][j] = truePressureData;
+        } else {
+            runningAveragePressure[currentSensor][j] = runningAveragePressure[currentSensor][j + 1];
+        }
+        pressureSum += runningAveragePressure[currentSensor][j];
+    }
+    float pressureAverage = pressureSum / RUNAVGAM;
+
+    uint16_t rawTemperatureData = (receiveArray[3] << 8) | receiveArray[4];
+    float ftemperatureData = rawTemperatureData;
+    float trueTemperature = ftemperatureData / 256.0f * tempcal[currentSensor];
+
+    for (uint8_t j = 0; j < RUNAVGAM; j++) {
+        if (j == RUNAVGAM - 1) {
+            runningAverageTemperature[currentSensor][j] = trueTemperature;
+        } else {
+            runningAverageTemperature[currentSensor][j] = runningAverageTemperature[currentSensor][j + 1];
+        }
+        temperatureSum += runningAverageTemperature[currentSensor][j];
+    }
+    float temperatureAverage = temperatureSum / RUNAVGAM;
+
+    pressureArray[currentSensor] = pressureAverage;
+    temperatureArray[currentSensor] = temperatureAverage;
+
+    // Move to next sensor
+    currentSensor++;
+    currentSensor = (currentSensor + 1) % NUM_OF_SENSORS;
+    dmaStep = 0;
+    selectMuxPin(currentSensor);
+    HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
+}
+
+
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -132,7 +224,6 @@ int main(void)
   	float temperatureSum = 0;
   	float temperatureAverage = 0;
   	float trueTemparature;
-  	float Fullscale_P = 40000;
   	float pressureSum = 0;
   	float pressureAverage = 0;
   	uint32_t timeRef1 = 0;
@@ -152,8 +243,8 @@ int main(void)
 
 
   	//Sensor calibration values
-  	float calibration[10] = { 1000  / 1.5 / 1.10/5, 300 / 1.40/2, 200, 120.0/1.3, 1, 1, 1, 1, 1, 1 };
-  	float tempcal[10] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };
+  	 //float calibration[10] = { 1000  / 1.5 / 1.10/5, 300 / 1.40/2, 200, 120.0/1.3, 1, 1, 1, 1, 1, 1 };
+  	 //float tempcal[10] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -165,8 +256,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
+
+
   	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
 
 	//Initialize MUX
@@ -177,6 +271,7 @@ int main(void)
 			HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
 		}
 	}
+	startSensorReadSequence();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -197,10 +292,10 @@ int main(void)
 
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
 	*/
-
+	  HAL_
 	  valve_set_openness(&bal1, 128);
 	  valve_update(&bal1);
-
+	  /*
 	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++) {
 		  	 selectMuxPin(i);
 		  //Set instructions for temperature and pressure sensors
@@ -260,6 +355,7 @@ int main(void)
 			temperatureArray[i] = temperatureAverage;
 
 	  }
+	  */
 	  /*
 	  HAL_Delay(2000);
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
@@ -362,6 +458,26 @@ static void MX_I2C3_Init(void)
   //__HAL_RCC_I2C3_CONFIG(RCC_I2C3CLKSOURCE_HSI);
   //__HAL_RCC_I2C3_CLK_ENABLE();
   /* USER CODE END I2C3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMAMUX1_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 
 }
 
