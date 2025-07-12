@@ -1,0 +1,2 @@
+../Core/Src/valve.c:10:6:valve_set_openness	16	static
+../Core/Src/valve.c:68:6:valve_update	24	static
