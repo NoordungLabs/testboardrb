@@ -310,6 +310,11 @@ int main(void)
 	}
 	*/
   startSensorReadSequence();
+  HAL_GPIO_WritePin((GPIO_TypeDef*)bal1.busC, bal1.pinC, GPIO_PIN_SET);
+  HAL_Delay(10000);
+  HAL_GPIO_WritePin((GPIO_TypeDef*)bal1.busC, bal1.pinC, GPIO_PIN_RESET);
+  valve_set_openness(&bal1, 128);
+  valve_update(&bal1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -332,9 +337,17 @@ int main(void)
 	*/
 
 	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
-	  HAL_Delay(100);
-	  //valve_set_openness(&bal1, 128);
-	  //valve_update(&bal1);
+	  //HAL_Delay(100);
+
+
+	  valve_update(&bal1);
+	  if (bal1.current_openness == 128){
+
+		  valve_set_openness(&bal1, 0);
+	  }
+	  else if(bal1.current_openness == 0){
+		  valve_set_openness(&bal1, 128);
+	  }
 	  /*
 	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++) {
 		  	 selectMuxPin(i);

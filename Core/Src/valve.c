@@ -160,7 +160,7 @@ void valve_update(ValveController* valve) {
             break;
 
         case VALVE_OPENING:
-            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->busC, valve->pinC)) {
+            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)) {
                 // Not moving when it should be → possibly fully open
                 HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_RESET);
 
@@ -180,9 +180,9 @@ void valve_update(ValveController* valve) {
             break;
 
         case VALVE_CLOSING:
-            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->busC, valve->pinC)) {
+            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)) {
                 // Not moving when it should be → possibly fully closed
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->funBus, valve->funPin, GPIO_PIN_RESET);
+                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_RESET);
 
                 // Assume fully closed → recalibrate
                 valve->current_openness = 0;
