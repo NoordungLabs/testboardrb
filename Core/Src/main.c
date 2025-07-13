@@ -38,19 +38,29 @@
 #define MGO		GPIOA
 
 #define NUM_OF_SENSORS 4
-#define RUNAVGAM 10
+#define RUNAVGAM 5
 #define Fullscale_P 4000.0f
 
-uint8_t currentSensor = 0;
-uint8_t dmaStep = 0;
+typedef enum {
+    SENSOR_STEP_INSTRUCTION,
+    SENSOR_STEP_ADDRESS,
+    SENSOR_STEP_RECEIVE
+} SensorDMAState;
+
+
+
+volatile uint8_t currentSensor;
+volatile uint8_t dmaStep;
 
 uint8_t instructionArray[2] = {0x30, 0x0A};
 uint8_t addressArray[1] = {0x06};
 uint8_t receiveArray[5];
 
+
+
 float pressureArray[NUM_OF_SENSORS];
 float temperatureArray[NUM_OF_SENSORS];
-float calibration[NUM_OF_SENSORS] = { 1000  / 1.5 / 1.10/5, 300 / 1.40/2, 200, 120.0/1.3, 1, 1, 1, 1, 1, 1 };;
+float calibration[NUM_OF_SENSORS] = { 10000  / 1.5 / 1.10/5, 3000 / 1.40/2, 2000, 1200.0/1.3, 1, 1, 1, 1, 1, 1 };;
 float tempcal[NUM_OF_SENSORS] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };;
 float runningAveragePressure[NUM_OF_SENSORS][RUNAVGAM];
 float runningAverageTemperature[NUM_OF_SENSORS][RUNAVGAM];
@@ -187,13 +197,33 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 
     // Move to next sensor
     currentSensor++;
-    currentSensor = (currentSensor + 1) % NUM_OF_SENSORS;
+    currentSensor = (currentSensor) % NUM_OF_SENSORS;
     dmaStep = 0;
     selectMuxPin(currentSensor);
     HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
 }
 
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c != &hi2c3) return;
 
+    // Optional: log the error or increment an error counter
+
+    // Reset the I2C peripheral (clears bus errors)
+    HAL_I2C_DeInit(hi2c);
+    //HAL_Delay(1);  // Small delay before re-init
+    HAL_I2C_Init(hi2c);
+
+    // Move to next sensor to avoid retrying the same one repeatedly
+    currentSensor++;
+    currentSensor %= NUM_OF_SENSORS;
+
+    dmaStep = 0;
+    selectMuxPin(currentSensor);
+    //HAL_Delay(1);  // Let MUX settle
+
+    // Restart DMA sequence
+    HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
+}
 
 
 /* USER CODE END PFP */
@@ -222,17 +252,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-    uint8_t instructionArray[8];
-  	uint8_t addressArray[8];
-  	uint8_t receiveArray[5];
   	uint32_t rawPressureData;
   	int32_t rawTemperatureData;
   	float fpressureData;
   	float fpressureData2;
   	float truePressureData;
-  	float runningAveragePressure[NUM_OF_SENSORS][5];
   	float ftemperatureData;
-  	float runningAverageTemperature[NUM_OF_SENSORS][5];
   	float temperatureSum = 0;
   	float temperatureAverage = 0;
   	float trueTemparature;
@@ -305,10 +330,11 @@ int main(void)
 
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
 	*/
-	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+
+	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
 	  HAL_Delay(100);
-	  valve_set_openness(&bal1, 128);
-	  valve_update(&bal1);
+	  //valve_set_openness(&bal1, 128);
+	  //valve_update(&bal1);
 	  /*
 	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++) {
 		  	 selectMuxPin(i);
@@ -405,7 +431,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV1;
+  RCC_OscInitStruct.PLL.PLLN = 8;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -415,12 +447,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -516,6 +548,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC13 PC14 PC7 */
@@ -535,6 +570,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA8 PA9 PA10 PA15 */

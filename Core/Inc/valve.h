@@ -32,6 +32,7 @@ typedef struct {
     ValveState state;
     uint32_t start_time;           // ms
     uint32_t move_duration;        // ms
+    uint8_t is_opening;            // 1 = opening, 0 = closing
 } ValveController;
 
 //ValveController valve = {0, 0, VALVE_IDLE, 0, 0};
