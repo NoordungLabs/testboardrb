@@ -78,8 +78,8 @@ ValveController bal1 = {
     .busC = (int)GPIOC,
 	.funPin = GPIO_PIN_12,
 	.funBus = (int)GPIOB,
-    .timeO = 8000,  // Full open time in ms
-    .timeC = 8000,  // Full close time in ms
+    .timeO = 9200 *1.2,  // Full open time in ms
+    .timeC = 11500 * 1.2,  // Full close time in ms
     .current_openness = 0,
     .target_openness = 0,
     .state = VALVE_IDLE,
@@ -210,7 +210,6 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 
     // Reset the I2C peripheral (clears bus errors)
     HAL_I2C_DeInit(hi2c);
-    //HAL_Delay(1);  // Small delay before re-init
     HAL_I2C_Init(hi2c);
 
     // Move to next sensor to avoid retrying the same one repeatedly
@@ -219,7 +218,6 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 
     dmaStep = 0;
     selectMuxPin(currentSensor);
-    //HAL_Delay(1);  // Let MUX settle
 
     // Restart DMA sequence
     HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
@@ -277,6 +275,8 @@ int main(void)
   	uint32_t openTick2 = 0;
   	uint32_t openTick3 = 0;
   	uint32_t openTick4 = 0;
+  	uint8_t debug = 0;
+  	uint32_t timepre = 0;
 
 
   	//Sensor calibration values
@@ -310,10 +310,14 @@ int main(void)
 	}
 	*/
   startSensorReadSequence();
-  HAL_GPIO_WritePin((GPIO_TypeDef*)bal1.busC, bal1.pinC, GPIO_PIN_SET);
+
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
   HAL_Delay(10000);
-  HAL_GPIO_WritePin((GPIO_TypeDef*)bal1.busC, bal1.pinC, GPIO_PIN_RESET);
-  valve_set_openness(&bal1, 128);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
+
+  valve_set_openness(&bal1, 127);
   valve_update(&bal1);
   /* USER CODE END 2 */
 
@@ -341,13 +345,51 @@ int main(void)
 
 
 	  valve_update(&bal1);
-	  if (bal1.current_openness == 128){
+
+	  uint32_t time = HAL_GetTick();
+
+	  if (time - timepre > 10000){
+		  if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){
+			  switch (debug){
+			  case 0:
+				  valve_set_openness(&bal1, 0);
+				  break;
+			  case 1:
+				  valve_set_openness(&bal1, 255);
+				  break;
+			  case 2:
+				  valve_set_openness(&bal1, 127);
+				  break;
+			  case 3:
+				  valve_set_openness(&bal1, 100);
+				  break;
+			  case 4:
+				  valve_set_openness(&bal1, 200);
+				  break;
+			  default:
+				  break;
+
+			  }
+			  if (debug > 5 ){debug = 0;}
+			  else debug++;
+
+		  }
+		  timepre = time;
+
+	  }
+
+	  /*
+	  if (bal1.current_openness == 127){
 
 		  valve_set_openness(&bal1, 0);
 	  }
 	  else if(bal1.current_openness == 0){
-		  valve_set_openness(&bal1, 128);
+		  valve_set_openness(&bal1, 127);
 	  }
+	*/
+
+
+
 	  /*
 	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++) {
 		  	 selectMuxPin(i);
@@ -573,8 +615,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC0 PC1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  /*Configure GPIO pins : PC15 PC0 PC1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);

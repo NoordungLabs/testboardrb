@@ -4,9 +4,9 @@
 ../Core/Src/main.c:144:6:HAL_I2C_MasterTxCpltCallback	4
 ../Core/Src/main.c:156:6:HAL_I2C_MasterRxCpltCallback	7
 ../Core/Src/main.c:206:6:HAL_I2C_ErrorCallback	2
-../Core/Src/main.c:242:5:main	3
-../Core/Src/main.c:432:6:SystemClock_Config	3
-../Core/Src/main.c:479:13:MX_I2C3_Init	4
-../Core/Src/main.c:526:13:MX_DMA_Init	1
-../Core/Src/main.c:548:13:MX_GPIO_Init	1
-../Core/Src/main.c:614:6:Error_Handler	1
+../Core/Src/main.c:240:5:main	9
+../Core/Src/main.c:474:6:SystemClock_Config	3
+../Core/Src/main.c:521:13:MX_I2C3_Init	4
+../Core/Src/main.c:568:13:MX_DMA_Init	1
+../Core/Src/main.c:590:13:MX_GPIO_Init	1
+../Core/Src/main.c:656:6:Error_Handler	1

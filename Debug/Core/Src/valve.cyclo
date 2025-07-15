@@ -1,2 +1,2 @@
-../Core/Src/valve.c:10:6:valve_set_openness	5
-../Core/Src/valve.c:138:6:valve_update	11
+../Core/Src/valve.c:9:6:valve_set_openness	1
+../Core/Src/valve.c:15:6:valve_update	15
