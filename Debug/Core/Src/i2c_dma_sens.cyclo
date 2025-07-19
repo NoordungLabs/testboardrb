@@ -1,0 +1,6 @@
+../Core/Src/i2c_dma_sens.c:27:6:selectMuxPin	3
+../Core/Src/i2c_dma_sens.c:37:6:muxInit	2
+../Core/Src/i2c_dma_sens.c:46:6:startSensorReadSequence	1
+../Core/Src/i2c_dma_sens.c:53:6:HAL_I2C_MasterTxCpltCallback	4
+../Core/Src/i2c_dma_sens.c:65:6:HAL_I2C_MasterRxCpltCallback	7
+../Core/Src/i2c_dma_sens.c:116:6:HAL_I2C_ErrorCallback	2

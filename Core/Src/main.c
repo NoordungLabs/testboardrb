@@ -22,6 +22,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "valve.h"
+#include "nslp_dma.h"
+#include "i2c_dma_sens.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+/*
 #define MUXE	GPIO_PIN_7
 #define MUXP1	GPIO_PIN_10
 #define MUXP2	GPIO_PIN_9
@@ -66,7 +70,7 @@ float runningAveragePressure[NUM_OF_SENSORS][RUNAVGAM];
 float runningAverageTemperature[NUM_OF_SENSORS][RUNAVGAM];
 
 const int selectPins[3] = { GPIO_PIN_10, GPIO_PIN_9, GPIO_PIN_8 };
-
+*/
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -86,12 +90,44 @@ ValveController bal1 = {
     .start_time = 0,
     .move_duration = 0
 };
+/*
+ValveController bal2 = {
+    .pinO = GPIO_PIN_6,
+    .busO = (int)GPIOB,
+    .pinC = GPIO_PIN_7,
+    .busC = (int)GPIOB,
+	.funPin = GPIO_PIN_11,
+	.funBus = (int)GPIOB,
+    .timeO = 9200 *1.2,  // Full open time in ms
+    .timeC = 11500 * 1.2,  // Full close time in ms
+    .current_openness = 0,
+    .target_openness = 0,
+    .state = VALVE_IDLE,
+    .start_time = 0,
+    .move_duration = 0
+};
+
+
+Solenoid air1 	=	{GPIO_PIN_2, GPIOD, GPIO_PIN_1, GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
+Solenoid air2 	=	{GPIO_PIN_3, GPIOB, GPIO_PIN_3, GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
+Solenoid liq1 	=	{GPIO_PIN_4, GPIOB, GPIO_PIN_1, GPIOA, GPIO_PIN_0, GPIOA, 0, 0};
+Solenoid liq2 	=	{GPIO_PIN_5, GPIOB, GPIO_PIN_3, GPIOA, GPIO_PIN_2, GPIOA, 0, 0};
+Solenoid ven1 	=	{GPIO_PIN_6, GPIOB, GPIO_PIN_5, GPIOA, GPIO_PIN_4, GPIOA, 0, 0};
+Solenoid ven2 	=	{GPIO_PIN_7, GPIOB, GPIO_PIN_7, GPIOA, GPIO_PIN_6, GPIOA, 0, 0};
+Ignitor ig1 	=	{GPIO_PIN_14, GPIOC, GPIO_PIN_10, GPIOB, GPIO_PIN_2, GPIOB, 0, 0};
+*/
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 I2C_HandleTypeDef hi2c3;
 DMA_HandleTypeDef hdma_i2c3_tx;
 DMA_HandleTypeDef hdma_i2c3_rx;
+
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -102,7 +138,10 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_I2C3_Init(void);
+static void MX_USART1_UART_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
+/*
 void selectMuxPin(uint8_t pin) {
 	for (uint8_t j = 0; j < 3; j++) {
 		if (pin & (1 << j)) {
@@ -222,7 +261,7 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     // Restart DMA sequence
     HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
 }
-
+*/
 
 /* USER CODE END PFP */
 
@@ -250,17 +289,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  	uint32_t rawPressureData;
-  	int32_t rawTemperatureData;
-  	float fpressureData;
-  	float fpressureData2;
-  	float truePressureData;
-  	float ftemperatureData;
-  	float temperatureSum = 0;
-  	float temperatureAverage = 0;
-  	float trueTemparature;
-  	float pressureSum = 0;
-  	float pressureAverage = 0;
   	uint32_t timeRef1 = 0;
   	uint32_t timeRef2 = 0;
   	uint32_t timeRef3 = 0;
@@ -269,19 +297,11 @@ int main(void)
   	uint32_t timeOpen2 = 0;
   	uint32_t opento1 = 0;
   	uint32_t opento2 = 0;
-  	uint32_t opento3 = 0;
-  	uint32_t opento4 = 0;
-  	uint32_t openTick1 = 0;
-  	uint32_t openTick2 = 0;
-  	uint32_t openTick3 = 0;
-  	uint32_t openTick4 = 0;
   	uint8_t debug = 0;
   	uint32_t timepre = 0;
 
 
-  	//Sensor calibration values
-  	 //float calibration[10] = { 1000  / 1.5 / 1.10/5, 300 / 1.40/2, 200, 120.0/1.3, 1, 1, 1, 1, 1, 1 };
-  	 //float tempcal[10] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -295,21 +315,12 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_I2C3_Init();
+  MX_USART1_UART_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   muxInit();
-  	/*
-  	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
-
-	//Initialize MUX
-	for (uint8_t i = 0; i < 3; i++) {
-		if (i == 2) {
-			HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
-		} else {
-			HAL_GPIO_WritePin(GPIOA, selectPins[i], GPIO_PIN_SET);
-		}
-	}
-	*/
   startSensorReadSequence();
+  nslp_init(&huart1);
 
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
@@ -317,6 +328,82 @@ int main(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
 
+
+
+  	/*
+  //Run calibration for bal1 and bal2
+  	while(1)
+  	{
+  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
+  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
+  		while (bal1.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
+  				HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
+  				bal1.isMax = 1;
+  			}
+  		}
+
+  		timeRef2 = HAL_GetTick();
+  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
+  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 1);
+  		while (!bal1.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
+  				bal1.timeO = HAL_GetTick() - timeRef1;
+  				HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
+  				bal1.isMax = 1;
+  			}
+  		}
+
+  		timeRef1 = HAL_GetTick();
+  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
+  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
+  		while (!bal1.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
+  				bal1.timeC = HAL_GetTick() - timeRef1;
+  				HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
+  				bal1.isMax = 1;
+  			}
+  		}
+  		break;
+
+  	}
+
+  	while(1)
+  	{
+  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
+  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 1);
+  		while (bal2.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
+  				HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
+  				bal2.isMax = 1;
+  			}
+  		}
+
+  		timeRef2 = HAL_GetTick();
+  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
+  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 1);
+  		while (!bal2.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
+  				bal2.timeO = HAL_GetTick() - timeRef1;
+  				HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
+  				bal2.isMax = 1;
+  			}
+  		}
+
+  		timeRef1 = HAL_GetTick();
+  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
+  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 1);
+  		while (!bal2.isMax){
+  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
+  				bal2.timeC = HAL_GetTick() - timeRef1;
+  				HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
+  				bal2.isMax = 1;
+  			}
+  		}
+  		break;
+
+  	}
+	*/
   valve_set_openness(&bal1, 127);
   valve_update(&bal1);
   /* USER CODE END 2 */
@@ -325,30 +412,26 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET); // Manually set PC8 high
-	  /*
-	  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-	  isCon = !HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1);
-	  isOn =  HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-	  ballin =  HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12);
-	  HAL_Delay(4000);
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
+	  struct Packet Pressure = {
+			.type = 'p',
+			.size = sizeof(pressureArray),
+			.payload = pressureArray
+		};
 
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
+	  struct Packet Temperature = {
+			.type = 't',
+			.size = sizeof(temperatureArray),
+			.payload = temperatureArray
+		};
 
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
-	*/
+	  send_packet_dma(&Temperature);
+	  send_packet_dma(&Pressure);
 
-	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
-	  //HAL_Delay(100);
-
-
-	  valve_update(&bal1);
+	  valve_update(&bal1); //Purely while debugging
 
 	  uint32_t time = HAL_GetTick();
 
-	  if (time - timepre > 10000){
+	  if (time - timepre > 100){
 		  if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){
 			  switch (debug){
 			  case 0:
@@ -375,91 +458,160 @@ int main(void)
 
 		  }
 		  timepre = time;
-
 	  }
-
-	  /*
-	  if (bal1.current_openness == 127){
-
-		  valve_set_openness(&bal1, 0);
-	  }
-	  else if(bal1.current_openness == 0){
-		  valve_set_openness(&bal1, 127);
-	  }
-	*/
 
 
 
 	  /*
-	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++) {
-		  	 selectMuxPin(i);
-		  //Set instructions for temperature and pressure sensors
-			instructionArray[0] = 0x30;
-			instructionArray[1] = 0x0A;
-			addressArray[0] = 0x06;
-			HAL_StatusTypeDef status0 =  HAL_I2C_Master_Transmit(&hi2c3, 0x7f << 1, instructionArray, 2, 200);
-			HAL_StatusTypeDef status1 =  HAL_I2C_Master_Transmit(&hi2c3, 0x7f << 1, addressArray, 1, 200);
-			HAL_StatusTypeDef status2 =  HAL_I2C_Master_Receive(&hi2c3, 0x7f << 1, receiveArray, 5, 200);
 
 
-			//Pressure data interpretation
-			rawPressureData = (receiveArray[0] << 16) | (receiveArray[1] << 8) | (receiveArray[2]);
-			fpressureData = rawPressureData;
-			if (fpressureData >= 8388608) {
-				fpressureData2 = (fpressureData - 16777216.0) * Fullscale_P * calibration[i] / 8388608.0;
-			} else {
-				fpressureData2 = fpressureData / 8388608.0 * Fullscale_P * calibration[i]; //delis zaradi max vrednosti
+			switch(safeCopy.type){
+	  		case (SADD):
+				(c.payload & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
+				(c.payload & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
+				(c.payload & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
+				(c.payload & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
+				(c.payload & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
+				(c.payload & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
+				(c.payload & (1 << 6)) ? HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 1)   : HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 0);
+				break;
+	  		case (BADA1):
+				opento1 = c.payload;
+	  			break;
+	  		case (BADA2):
+				opento2 = c.payload;
+				break;
 			}
-			truePressureData = fpressureData2;
 
-			//Running average  for stable data
-			for (uint8_t j = 0; j < RUNAVGAM; j++) {
-				if (j == 0) {
-					pressureSum = 0;
-				}
-				if (j == RUNAVGAM - 1) {
-					runningAveragePressure[i][j] = truePressureData;
-					pressureSum += runningAveragePressure[i][j];
-					break;
-				}
-				runningAveragePressure[i][j] = runningAveragePressure[i][j + 1];
-				pressureSum += runningAveragePressure[i][j];
-			}
-			pressureAverage = pressureSum / RUNAVGAM;
+	  //Is line really on
+	  		uint8_t isOn = 0;
+	  		air1.isOn = HAL_GPIO_ReadPin(air1.onbus, air1.onpin);
+	  		air2.isOn = HAL_GPIO_ReadPin(air2.onbus, air2.onpin);
+	  		liq1.isOn = HAL_GPIO_ReadPin(liq1.onbus, liq1.onpin);
+	  		liq2.isOn = HAL_GPIO_ReadPin(liq2.onbus, liq2.onpin);
+	  		ven1.isOn = HAL_GPIO_ReadPin(ven1.onbus, ven1.onpin);
+	  		ven2.isOn = HAL_GPIO_ReadPin(ven2.onbus, ven2.onpin);
+	  		ig1.isOn  = HAL_GPIO_ReadPin(ig1.onbus, ig1.onpin);
+	  		(air1.isOn) ? (isOn |= (1 << 0)) : (isOn &= ~(1 << 0));
+	  		(air2.isOn) ? (isOn |= (1 << 1)) : (isOn &= ~(1 << 1));
+	  		(liq1.isOn) ? (isOn |= (1 << 2)) : (isOn &= ~(1 << 2));
+	  		(liq2.isOn) ? (isOn |= (1 << 3)) : (isOn &= ~(1 << 3));
+	  		(ven1.isOn) ? (isOn |= (1 << 4)) : (isOn &= ~(1 << 4));
+	  		(ven2.isOn) ? (isOn |= (1 << 5)) : (isOn &= ~(1 << 5));
+	  		(ig1.isOn)  ? (isOn |= (1 << 6)) : (isOn &= ~(1 << 6));
 
-			//Temperature data interpretation
-			rawTemperatureData = (receiveArray[3] << 8) | receiveArray[4];
-			ftemperatureData = rawTemperatureData;
-			trueTemparature = ftemperatureData / 256.0 * tempcal[i];
+	  		//Check if relay is connected
+	  		uint8_t isCon = 0;
+	  		air1.isCon = !HAL_GPIO_ReadPin(air1.conBus, air1.conPin);
+	  		air2.isCon = !HAL_GPIO_ReadPin(air2.conBus, air2.conPin);
+	  		liq1.isCon = !HAL_GPIO_ReadPin(liq1.conBus, liq1.conPin);
+	  		liq2.isCon = !HAL_GPIO_ReadPin(liq2.conBus, liq2.conPin);
+	  		ven1.isCon = !HAL_GPIO_ReadPin(ven1.conBus, ven1.conPin);
+	  		ven2.isCon = !HAL_GPIO_ReadPin(ven2.conBus, ven2.conPin);
+	  		ig1.isCon  = !HAL_GPIO_ReadPin(ig1.conBus, ig1.conPin);
+	  		(air1.isCon) ? (isCon |= (1 << 0)) : (isCon &= ~(1 << 0));
+	  		(air2.isCon) ? (isCon |= (1 << 1)) : (isCon &= ~(1 << 1));
+	  		(liq1.isCon) ? (isCon |= (1 << 2)) : (isCon &= ~(1 << 2));
+	  		(liq2.isCon) ? (isCon |= (1 << 3)) : (isCon &= ~(1 << 3));
+	  		(ven1.isCon) ? (isCon |= (1 << 4)) : (isCon &= ~(1 << 4));
+	  		(ven2.isCon) ? (isCon |= (1 << 5)) : (isCon &= ~(1 << 5));
+	  		(ig1.isCon)  ? (isCon |= (1 << 6)) : (isCon &= ~(1 << 6));
 
-			//Running average  for stable data
-			for (uint8_t j = 0; j < RUNAVGAM; j++) {
-				if (j == 0) {
-					temperatureSum = 0;
-				}
-				if (j == RUNAVGAM - 1) {
-					runningAverageTemperature[i][j] = trueTemparature;
-					temperatureSum += runningAverageTemperature[i][j];
-					break;
-				}
-				runningAverageTemperature[i][j] = runningAverageTemperature[i][j + 1];
-				temperatureSum += runningAverageTemperature[i][j];
-			}
-			temperatureAverage = temperatureSum / RUNAVGAM;
-			pressureArray[i] = pressureAverage;
-			temperatureArray[i] = temperatureAverage;
+	  	  	//Check if relay is open
+	  		uint8_t isFun = 0;
+	  		air1.isFun = HAL_GPIO_ReadPin(air1.funBus, air1.funPin);
+	  		air2.isFun = HAL_GPIO_ReadPin(air2.funBus, air2.funPin);
+	  		liq1.isFun = HAL_GPIO_ReadPin(liq1.funBus, liq1.funPin);
+	  		liq2.isFun = HAL_GPIO_ReadPin(liq2.funBus, liq2.funPin);
+	  		ven1.isFun = HAL_GPIO_ReadPin(ven1.funBus, ven1.funPin);
+	  		ven2.isFun = HAL_GPIO_ReadPin(ven2.funBus, ven2.funPin);
+	  		ig1.isFun  = HAL_GPIO_ReadPin(ig1.funBus, ig1.funPin);
+	  		(air1.isFun) ? (isFun |= (1 << 0)) : (isFun &= ~(1 << 0));
+	  		(air2.isFun) ? (isFun |= (1 << 1)) : (isFun &= ~(1 << 1));
+	  		(liq1.isFun) ? (isFun |= (1 << 2)) : (isFun &= ~(1 << 2));
+	  		(liq2.isFun) ? (isFun |= (1 << 3)) : (isFun &= ~(1 << 3));
+	  		(ven1.isFun) ? (isFun |= (1 << 4)) : (isFun &= ~(1 << 4));
+	  		(ven2.isFun) ? (isFun |= (1 << 5)) : (isFun &= ~(1 << 5));
+	  		(ig1.isFun)  ? (isFun |= (1 << 6)) : (isFun &= ~(1 << 6));
 
-	  }
+	  		valve_set_openness(&bal1, opento1);
+	  		valve_set_openness(&bal2, opento2);
+	  		valve_update(&bal1);
+	  		valve_update(&bal2);
+
+
+  struct Packet Pressure = {
+		.type = 0xA0,
+		.size = sizeof(pressureArray),
+		.payload = pressureArray
+	};
+
+  struct Packet Temperature = {
+		.type = 0xA1,
+		.size = sizeof(temperatureArray),
+		.payload = temperatureArray
+	};
+
+  struct Packet Ball1State = {
+		.type = 0xA3,
+		.size = sizeof(pressureArray),
+		.payload = pressureArray
+	};
+
+  struct Packet Ball1CurrentPos = {
+		.type = 0xA4,
+		.size = sizeof(temperatureArray),
+		.payload = temperatureArray
+	};
+
+
+  struct Packet Ball2State = {
+		.type = 0xA5,
+		.size = sizeof(pressureArray),
+		.payload = pressureArray
+	};
+
+  struct Packet Ball2CurrentPos = {
+		.type = 0xA6,
+		.size = sizeof(temperatureArray),
+		.payload = temperatureArray
+	};
+
+  struct Packet SolIsCon = {
+		.type = 0xA7,
+		.size = sizeof(isCon),
+		.payload = isCon
+	};
+
+  struct Packet SolIsOn = {
+		.type = 0xA8,
+		.size = sizeof(isOn),
+		.payload = isOn
+	};
+
+  struct Packet SolISFun = {
+		.type = 0xA9,
+		.size = sizeof(isFun),
+		.payload = isFun
+	};
+
+  send_packet_dma(&Temperature);
+  send_packet_dma(&Pressure);
+  send_packet_dma(&Bal1State);
+  send_packet_dma(&Bal1CurrentPos);
+  send_packet_dma(&Bal2State);
+  send_packet_dma(&Bal2CurrentPos);
+  send_packet_dma(&SolIsCon);
+  send_packet_dma(&SolIsOn);
+  send_packet_dma(&SolISFun);
+
+
+
 	  */
-	  /*
-	  HAL_Delay(2000);
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
 
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
 
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
-	*/
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -514,6 +666,37 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
+  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
+  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
+}
+
+/**
   * @brief I2C3 Initialization Function
   * @param None
   * @retval None
@@ -563,6 +746,54 @@ static void MX_I2C3_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -579,6 +810,12 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 
 }
 
