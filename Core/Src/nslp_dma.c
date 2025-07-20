@@ -129,7 +129,7 @@ static void start_next_transmit() {
 	HAL_UART_Transmit_DMA(nslp_uart, txBuffer, len);
 }
 
-//send selected packet
+//queue selected packet
 void send_packet_dma(struct Packet *p) {
 	if (!p || p->size > MAX_PAYLOAD_SIZE) return;
 

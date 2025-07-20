@@ -1,7 +1,7 @@
 ../Core/Src/nslp_dma.c:7:16:calculate_crc	4
 ../Core/Src/nslp_dma.c:37:13:handle_received_packet	1
-../Core/Src/nslp_dma.c:43:6:nslp_init	1
-../Core/Src/nslp_dma.c:51:6:HAL_UART_RxCpltCallback	10
-../Core/Src/nslp_dma.c:111:13:start_next_transmit	2
-../Core/Src/nslp_dma.c:134:6:send_packet_dma	4
-../Core/Src/nslp_dma.c:152:6:HAL_UART_TxCpltCallback	2
+../Core/Src/nslp_dma.c:41:6:nslp_init	1
+../Core/Src/nslp_dma.c:49:6:HAL_UART_RxCpltCallback	10
+../Core/Src/nslp_dma.c:109:13:start_next_transmit	2
+../Core/Src/nslp_dma.c:133:6:send_packet_dma	4
+../Core/Src/nslp_dma.c:151:6:HAL_UART_TxCpltCallback	2

@@ -18,7 +18,7 @@
 #define MGO     GPIOA
 
 // Configuration constants
-#define NUM_OF_SENSORS 4
+#define NUM_OF_SENSORS 6
 #define RUNAVGAM 5
 #define Fullscale_P 4000.0f
 
