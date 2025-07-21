@@ -1,155 +1,138 @@
+// nslp_dma.c
 #include "nslp_dma.h"
 #include <string.h>
 
-static UART_HandleTypeDef *nslp_uart;
+NSLP_DMA nslp_dma_ctx;
+static uint8_t txDone = 1;
 
-// === CRC ===
-static uint8_t calculate_crc(uint8_t *data, uint16_t length) {
-	uint8_t crc = 0x00;
-	for (uint16_t i = 0; i < length; ++i) {
-		crc ^= data[i];
-		for (uint8_t j = 0; j < 8; ++j)
-			crc = (crc & 0x80) ? (crc << 1) ^ 0x07 : (crc << 1);
-	}
-	return crc;
+// --- Transmit queue ---
+static struct Packet *txQueue[NSLP_TX_QUEUE_SIZE];
+static int txHead = 0;
+static int txTail = 0;
+
+static int tx_queue_is_empty() {
+    return txHead == txTail;
 }
 
-// === RX ===
-static uint8_t rxFrameStart;
-static uint8_t rxHeader[2];
-static uint8_t rxPayload[MAX_PAYLOAD_SIZE];
-static uint8_t rxCRC;
-
-typedef enum { RX_WAIT_START, RX_WAIT_HEADER, RX_WAIT_PAYLOAD, RX_WAIT_CRC } RX_State;
-static RX_State rx_state = RX_WAIT_START;
-
-static struct Packet currentRxPacket;
-struct Packet safeCopy;
-uint8_t safePayload[MAX_PAYLOAD_SIZE];
-
-// === TX ===
-static struct Packet *txQueue[TX_QUEUE_SIZE];
-static uint8_t txHead = 0, txTail = 0;
-static uint8_t txInProgress = 0;
-static uint8_t txBuffer[1 + 2 + MAX_PAYLOAD_SIZE + 1]; // FRAME + HEADER + PAYLOAD + CRC
-
-// Callback pointer
-__weak void handle_received_packet(struct Packet *p) {
-
+static int tx_queue_is_full() {
+    return ((txTail + 1) % NSLP_TX_QUEUE_SIZE) == txHead;
 }
 
-void nslp_init(UART_HandleTypeDef *huart) {
-	nslp_uart = huart;
-	txHead = txTail = txInProgress = 0;
-	rx_state = RX_WAIT_START;
-	HAL_UART_Receive_DMA(nslp_uart, &rxFrameStart, 1);
+static void tx_queue_enqueue(struct Packet *p) {
+    if (!tx_queue_is_full()) {
+        txQueue[txTail] = p;
+        txTail = (txTail + 1) % NSLP_TX_QUEUE_SIZE;
+    }
 }
 
-// RX Callback
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart != nslp_uart) return;
-
-	switch (rx_state) {
-		case RX_WAIT_START:
-			if (rxFrameStart == FRAME_START) {
-				rx_state = RX_WAIT_HEADER;
-				HAL_UART_Receive_DMA(nslp_uart, rxHeader, 2);
-			} else {
-				HAL_UART_Receive_DMA(nslp_uart, &rxFrameStart, 1);
-			}
-			break;
-
-		case RX_WAIT_HEADER:
-			currentRxPacket.type = rxHeader[0];
-			currentRxPacket.size = rxHeader[1];
-			currentRxPacket.payload = rxPayload;
-
-			if (currentRxPacket.size > 0 && currentRxPacket.size <= MAX_PAYLOAD_SIZE) {
-				rx_state = RX_WAIT_PAYLOAD;
-				HAL_UART_Receive_DMA(nslp_uart, rxPayload, currentRxPacket.size);
-			} else if (currentRxPacket.size == 0) {
-				rx_state = RX_WAIT_CRC;
-				HAL_UART_Receive_DMA(nslp_uart, &rxCRC, 1);
-			} else {
-				rx_state = RX_WAIT_START;
-				HAL_UART_Receive_DMA(nslp_uart, &rxFrameStart, 1);
-			}
-			break;
-
-		case RX_WAIT_PAYLOAD:
-			rx_state = RX_WAIT_CRC;
-			HAL_UART_Receive_DMA(nslp_uart, &rxCRC, 1);
-			break;
-
-		case RX_WAIT_CRC: {
-			uint8_t temp[2 + MAX_PAYLOAD_SIZE];
-			temp[0] = currentRxPacket.type;
-			temp[1] = currentRxPacket.size;
-			memcpy(&temp[2], currentRxPacket.payload, currentRxPacket.size);
-			uint8_t calc_crc = calculate_crc(temp, 2 + currentRxPacket.size);
-
-			if (calc_crc == rxCRC) {
-				// Make safe copy for app use
-				safeCopy.type = currentRxPacket.type;
-				safeCopy.size = currentRxPacket.size;
-				memcpy(safePayload, currentRxPacket.payload, currentRxPacket.size);
-				safeCopy.payload = safePayload;
-
-				handle_received_packet(&safeCopy); // ISR-safe if quick
-			}
-
-			rx_state = RX_WAIT_START;
-			HAL_UART_Receive_DMA(nslp_uart, &rxFrameStart, 1);
-			break;
-		}
-	}
+static struct Packet* tx_queue_dequeue() {
+    if (tx_queue_is_empty()) return NULL;
+    struct Packet *p = txQueue[txHead];
+    txHead = (txHead + 1) % NSLP_TX_QUEUE_SIZE;
+    return p;
 }
 
-// Prepares next packet
-static void start_next_transmit() {
-	if (txHead == txTail) {
-		txInProgress = 0;
-		return;
-	}
+void nslp_dma_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc) {
+    nslp_dma_ctx.uart = huart;
+    nslp_dma_ctx.crc = hcrc;
+    txHead = txTail = 0;
+    txDone = 1;
 
-	struct Packet *p = txQueue[txTail];
-	txTail = (txTail + 1) % TX_QUEUE_SIZE;
-
-	uint16_t len = 0;
-	txBuffer[len++] = FRAME_START;
-	txBuffer[len++] = p->type;
-	txBuffer[len++] = p->size;
-	memcpy(&txBuffer[len], p->payload, p->size);
-	len += p->size;
-
-	uint8_t crc = calculate_crc(&txBuffer[1], 2 + p->size);
-	txBuffer[len++] = crc;
-
-	txInProgress = 1;
-	HAL_UART_Transmit_DMA(nslp_uart, txBuffer, len);
+    __HAL_UART_ENABLE_IT(huart, UART_IT_IDLE);
+    nslp_start_rx_idle_dma();
 }
 
-//queue selected packet
 void send_packet_dma(struct Packet *p) {
-	if (!p || p->size > MAX_PAYLOAD_SIZE) return;
+    if (!p || p->size > MAX_PACKET_SIZE) return;
 
-	uint8_t nextHead = (txHead + 1) % TX_QUEUE_SIZE;
-	if (nextHead == txTail) {
-		// Queue full — drop
-		return;
-	}
+    tx_queue_enqueue(p);
 
-	txQueue[txHead] = p;
-	txHead = nextHead;
+    if (txDone) {
+        struct Packet *next = tx_queue_dequeue();
+        if (next) {
+            uint16_t packetSize = HEADER_SIZE + next->size;
+            uint16_t totalSize = FRAME_START_SIZE + packetSize + CHECKSUM_SIZE;
 
-	if (!txInProgress) {
-		start_next_transmit();
-	}
+            nslp_dma_ctx.txBuffer[0] = FRAME_START;
+            nslp_dma_ctx.txBuffer[1] = next->type;
+            nslp_dma_ctx.txBuffer[2] = next->size;
+
+            memcpy(&nslp_dma_ctx.txBuffer[3], next->payload, next->size);
+
+            uint32_t crc = HAL_CRC_Calculate(nslp_dma_ctx.crc, (uint32_t *)&nslp_dma_ctx.txBuffer[1], packetSize);
+            memcpy(&nslp_dma_ctx.txBuffer[3 + next->size], &crc, CHECKSUM_SIZE);
+
+            txDone = 0;
+            HAL_UART_Transmit_DMA(nslp_dma_ctx.uart, nslp_dma_ctx.txBuffer, totalSize);
+        }
+    }
 }
 
-// TX Callback
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart == nslp_uart) {
-		start_next_transmit();
-	}
+    if (huart != nslp_dma_ctx.uart) return;
+
+    struct Packet *next = tx_queue_dequeue();
+    if (next) {
+        uint16_t packetSize = HEADER_SIZE + next->size;
+        uint16_t totalSize = FRAME_START_SIZE + packetSize + CHECKSUM_SIZE;
+
+        nslp_dma_ctx.txBuffer[0] = FRAME_START;
+        nslp_dma_ctx.txBuffer[1] = next->type;
+        nslp_dma_ctx.txBuffer[2] = next->size;
+
+        memcpy(&nslp_dma_ctx.txBuffer[3], next->payload, next->size);
+
+        uint32_t crc = HAL_CRC_Calculate(nslp_dma_ctx.crc, (uint32_t *)&nslp_dma_ctx.txBuffer[1], packetSize);
+        memcpy(&nslp_dma_ctx.txBuffer[3 + next->size], &crc, CHECKSUM_SIZE);
+
+        HAL_UART_Transmit_DMA(nslp_dma_ctx.uart, nslp_dma_ctx.txBuffer, totalSize);
+    } else {
+        txDone = 1;
+    }
+}
+
+void nslp_start_rx_idle_dma(void) {
+    HAL_UART_Receive_DMA(nslp_dma_ctx.uart, nslp_dma_ctx.rxBuffer, NSLP_RX_BUFFER_SIZE);
+}
+
+void HAL_UART_IDLECallback(UART_HandleTypeDef *huart) {
+    if (huart != nslp_dma_ctx.uart) return;
+
+    __HAL_UART_CLEAR_IDLEFLAG(huart);
+    HAL_UART_DMAStop(huart);
+
+    uint16_t rxLen = NSLP_RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart->hdmarx);
+
+    if (rxLen < FRAME_START_SIZE + HEADER_SIZE + CHECKSUM_SIZE) {
+        nslp_start_rx_idle_dma();
+        return;
+    }
+
+    if (nslp_dma_ctx.rxBuffer[0] != FRAME_START) {
+        nslp_start_rx_idle_dma();
+        return;
+    }
+
+    uint8_t size = nslp_dma_ctx.rxBuffer[2];
+    if ((size + FRAME_START_SIZE + HEADER_SIZE + CHECKSUM_SIZE) > rxLen) {
+        nslp_start_rx_idle_dma();
+        return;
+    }
+
+    memcpy(nslp_dma_ctx.rxData, nslp_dma_ctx.rxBuffer, size + FRAME_START_SIZE + HEADER_SIZE + CHECKSUM_SIZE);
+
+    uint32_t crc_calc = HAL_CRC_Calculate(nslp_dma_ctx.crc, (uint32_t *)&nslp_dma_ctx.rxData[1], HEADER_SIZE + size);
+    uint32_t crc_recv = *(uint32_t *)&nslp_dma_ctx.rxData[FRAME_START_SIZE + HEADER_SIZE + size];
+
+    if (crc_calc == crc_recv) {
+        nslp_dma_ctx.rxPacket.type = nslp_dma_ctx.rxData[1];
+        nslp_dma_ctx.rxPacket.size = nslp_dma_ctx.rxData[2];
+        nslp_dma_ctx.rxPacket.payload = &nslp_dma_ctx.rxData[3];
+    }
+
+    nslp_start_rx_idle_dma();
+}
+
+struct Packet* nslp_get_received_packet(void) {
+    return &nslp_dma_ctx.rxPacket;
 }

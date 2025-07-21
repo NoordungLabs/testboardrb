@@ -1,7 +1,10 @@
-../Core/Src/nslp_dma.c:7:16:calculate_crc	24	static
-../Core/Src/nslp_dma.c:37:13:handle_received_packet	16	static
-../Core/Src/nslp_dma.c:41:6:nslp_init	16	static
-../Core/Src/nslp_dma.c:49:6:HAL_UART_RxCpltCallback	280	static
-../Core/Src/nslp_dma.c:109:13:start_next_transmit	16	static
-../Core/Src/nslp_dma.c:133:6:send_packet_dma	24	static
-../Core/Src/nslp_dma.c:151:6:HAL_UART_TxCpltCallback	16	static
+../Core/Src/nslp_dma.c:13:12:tx_queue_is_empty	4	static
+../Core/Src/nslp_dma.c:17:12:tx_queue_is_full	4	static
+../Core/Src/nslp_dma.c:21:13:tx_queue_enqueue	16	static
+../Core/Src/nslp_dma.c:28:23:tx_queue_dequeue	16	static
+../Core/Src/nslp_dma.c:35:6:nslp_dma_init	16	static
+../Core/Src/nslp_dma.c:45:6:send_packet_dma	32	static
+../Core/Src/nslp_dma.c:71:6:HAL_UART_TxCpltCallback	32	static
+../Core/Src/nslp_dma.c:94:6:nslp_start_rx_idle_dma	8	static
+../Core/Src/nslp_dma.c:98:6:HAL_UART_IDLECallback	32	static
+../Core/Src/nslp_dma.c:136:16:nslp_get_received_packet	4	static

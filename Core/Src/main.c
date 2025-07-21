@@ -90,6 +90,8 @@ ValveController bal1 = {
     .start_time = 0,
     .move_duration = 0
 };
+
+struct Packet *rx;
 /*
 ValveController bal2 = {
     .pinO = GPIO_PIN_6,
@@ -320,14 +322,14 @@ int main(void)
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
-  nslp_init(&huart1);
-
+  nslp_dma_init(&huart1, &hcrc);
+  /*
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
   HAL_Delay(10000);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
-
+	*/
 
 
   	/*
@@ -460,6 +462,10 @@ int main(void)
 		  timepre = time;
 	  }
 
+	  rx = nslp_get_received_packet();
+	  if (rx && rx->payload != NULL) {
+		  uint8_t yay = 1;
+	  }
 
 
 	  /*
@@ -827,8 +833,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -878,8 +884,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -900,8 +906,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
