@@ -84,5 +84,6 @@ struct Openess{
 
 void valve_set_openness(ValveController* valve, uint8_t openness);
 void valve_update(ValveController* valve);
+void valve_calibrate(ValveController* valve);
 
 #endif /* INC_VALVE_H_ */

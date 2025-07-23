@@ -104,6 +104,45 @@ void valve_update(ValveController* valve) {
 }
 
 
+void valve_calibrate(ValveController* valve){
+  	uint32_t timeRef1 = 0;
+  	uint32_t timeRef2 = 0;
+	while(1){
+		HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, 0);
+		HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
+		while (valve->isMax){
+			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
+				HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+				valve->isMax = 1;
+			}
+		}
+
+		timeRef2 = HAL_GetTick();
+		HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+		HAL_GPIO_WritePin(valve->busO, valve->pinO, 1);
+		while (!valve->isMax){
+			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
+				valve->timeO = HAL_GetTick() - timeRef1;
+				HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
+				valve->isMax = 1;
+			}
+		}
+
+		timeRef1 = HAL_GetTick();
+		HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
+		HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
+		while (!valve->isMax){
+			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
+				valve->timeC = HAL_GetTick() - timeRef1;
+				HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+				valve->isMax = 1;
+			}
+		}
+		break;
+	}
+}
+
+
 /*
 void valve_set_openness(ValveController* valve, uint8_t openness) {
     valve->target_openness = openness;

@@ -1,2 +1,3 @@
 ../Core/Src/valve.c:9:6:valve_set_openness	1
 ../Core/Src/valve.c:15:6:valve_update	15
+../Core/Src/valve.c:107:6:valve_calibrate	7

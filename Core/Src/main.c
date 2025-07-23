@@ -24,7 +24,7 @@
 #include "valve.h"
 #include "nslp_dma.h"
 #include "i2c_dma_sens.h"
-
+//remove in stm32g4xx_it.c in usart1_irqHandler and after uartinit
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -107,9 +107,20 @@ static void MX_I2C3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
-
-
-
+/*
+void on_packet_received(struct Packet *p) {
+    switch (p->type) {
+        case 'a':
+            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); // Example: toggle LED on type 'a'
+            break;
+        case 'b':
+            // Do something else
+            break;
+        default:
+            break;
+    }
+}
+*/
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -136,12 +147,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  	uint32_t timeRef1 = 0;
-  	uint32_t timeRef2 = 0;
-  	uint32_t timeRef3 = 0;
-  	uint32_t timeRef4 = 0;
-  	uint32_t timeOpen1 = 0;
-  	uint32_t timeOpen2 = 0;
   	uint32_t opento1 = 0;
   	uint32_t opento2 = 0;
   	uint8_t debug = 0;
@@ -163,94 +168,20 @@ int main(void)
   MX_DMA_Init();
   MX_I2C3_Init();
   MX_USART1_UART_Init();
+  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
   nslp_dma_init(&huart1, &hcrc);
+  //nslp_set_rx_callback(on_packet_received);
   /*
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
   HAL_Delay(10000);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
-	*/
 
-
-  	/*
-  //Run calibration for bal1 and bal2
-  	while(1)
-  	{
-  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
-  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
-  		while (bal1.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
-  				HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
-  				bal1.isMax = 1;
-  			}
-  		}
-
-  		timeRef2 = HAL_GetTick();
-  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
-  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 1);
-  		while (!bal1.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
-  				bal1.timeO = HAL_GetTick() - timeRef1;
-  				HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
-  				bal1.isMax = 1;
-  			}
-  		}
-
-  		timeRef1 = HAL_GetTick();
-  		HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
-  		HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
-  		while (!bal1.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal1.funBus, bal1.funPin)){
-  				bal1.timeC = HAL_GetTick() - timeRef1;
-  				HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
-  				bal1.isMax = 1;
-  			}
-  		}
-  		break;
-
-  	}
-
-  	while(1)
-  	{
-  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
-  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 1);
-  		while (bal2.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
-  				HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
-  				bal2.isMax = 1;
-  			}
-  		}
-
-  		timeRef2 = HAL_GetTick();
-  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
-  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 1);
-  		while (!bal2.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
-  				bal2.timeO = HAL_GetTick() - timeRef1;
-  				HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
-  				bal2.isMax = 1;
-  			}
-  		}
-
-  		timeRef1 = HAL_GetTick();
-  		HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
-  		HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 1);
-  		while (!bal2.isMax){
-  			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)bal2.funBus, bal2.funPin)){
-  				bal2.timeC = HAL_GetTick() - timeRef1;
-  				HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
-  				bal2.isMax = 1;
-  			}
-  		}
-  		break;
-
-  	}
-	*/
   valve_set_openness(&bal1, 127);
   valve_update(&bal1);
   /* USER CODE END 2 */
@@ -309,6 +240,7 @@ int main(void)
 
 	  rx = nslp_get_received_packet();
 	  if (rx && rx->payload != NULL) {
+
 		  uint8_t yay = 1;
 	  }
 
