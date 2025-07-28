@@ -46,8 +46,8 @@ ValveController bal1 = {
     .busC = (int)GPIOC,
 	.funPin = GPIO_PIN_12,
 	.funBus = (int)GPIOB,
-    .timeO = 9200 *1.2,  // Full open time in ms
-    .timeC = 11500 * 1.2,  // Full close time in ms
+    .timeO = 6500,  // Full open time in ms
+    .timeC = 6500,  // Full close time in ms
     .current_openness = 0,
     .target_openness = 0,
     .state = VALVE_IDLE,
@@ -56,7 +56,7 @@ ValveController bal1 = {
 };
 
 struct Packet *rx;
-/*
+
 ValveController bal2 = {
     .pinO = GPIO_PIN_6,
     .busO = (int)GPIOB,
@@ -73,7 +73,7 @@ ValveController bal2 = {
     .move_duration = 0
 };
 
-
+/*
 Solenoid air1 	=	{GPIO_PIN_2, GPIOD, GPIO_PIN_1, GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
 Solenoid air2 	=	{GPIO_PIN_3, GPIOB, GPIO_PIN_3, GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
 Solenoid liq1 	=	{GPIO_PIN_4, GPIOB, GPIO_PIN_1, GPIOA, GPIO_PIN_0, GPIOA, 0, 0};
@@ -150,7 +150,10 @@ int main(void)
   	uint32_t opento1 = 0;
   	uint32_t opento2 = 0;
   	uint8_t debug = 0;
+  	uint8_t flag = 0;
   	uint32_t timepre = 0;
+  	uint32_t timeref1 = 0;
+  	uint32_t timec = 0;
 
 
 
@@ -168,28 +171,64 @@ int main(void)
   MX_DMA_Init();
   MX_I2C3_Init();
   MX_USART1_UART_Init();
-  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
   nslp_dma_init(&huart1, &hcrc);
   //nslp_set_rx_callback(on_packet_received);
+
+  HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
+  HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
   /*
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 1);
   HAL_Delay(10000);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
 
   valve_set_openness(&bal1, 127);
   valve_update(&bal1);
+  */
+  valve_calibrate(&bal1);
+  //valve_close(&bal1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  timec = HAL_GetTick();
+	  if (timec - timeref1 > 10000){
+		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
+		  timeref1 = timec;
+		  flag = !flag;
+
+		  if (flag){
+			  valve_set_openness(&bal1, 255);
+			  /*
+			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
+			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
+			  HAL_Delay(1000);
+			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
+			  */
+
+		  }
+		  else {
+			  valve_set_openness(&bal1, 100);
+			  /*
+			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
+			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
+			  HAL_Delay(1000);
+			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 1);
+			  */
+		  }
+
+	  }
+
+	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
+	  //HAL_Delay(1000);
+	  isOn = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
+	  isCon = !HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1);
+
 	  struct Packet Pressure = {
 			.type = 'p',
 			.size = sizeof(pressureArray),
@@ -623,7 +662,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15, GPIO_PIN_RESET);
@@ -641,14 +680,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  /*Configure GPIO pins : PB11 PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  /*Configure GPIO pins : PB13 PB6 PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_6|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

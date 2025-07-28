@@ -12,6 +12,94 @@ void valve_set_openness(ValveController* valve, uint8_t openness) {
     // New logic will handle real-time change in valve_update
 }
 
+
+
+#define DIRECTION_CHANGE_DELAY    1000    // Delay before changing direction
+#define MOVEMENT_COOLDOWN_DELAY   1000    // Delay after movement completes
+#define POSITION_TOLERANCE         2     // Allowable position difference
+
+void valve_update(ValveController* valve) {
+    uint32_t now = HAL_GetTick();
+    int16_t delta;
+    uint32_t elapsed;
+
+    switch (valve->state) {
+        case VALVE_IDLE:
+            // Check if we need to start new movement after cooldown
+            if (now >= valve->cooldown_end_time) {
+                delta = valve->target_openness - valve->current_openness;
+
+                // Only move if beyond tolerance threshold
+                if (delta > POSITION_TOLERANCE || -delta > POSITION_TOLERANCE) {
+                    if (delta > 0) {
+                        valve->move_duration = ((uint32_t)delta * valve->timeO) / 255;
+                        valve->start_time = now;
+                        HAL_GPIO_WritePin(valve->busO, valve->pinO, GPIO_PIN_SET);
+                        valve->state = VALVE_OPENING;
+                    }
+                    else {
+                        valve->move_duration = ((uint32_t)(-delta) * valve->timeC) / 255;
+                        valve->start_time = now;
+                        HAL_GPIO_WritePin(valve->busC, valve->pinC, GPIO_PIN_SET);
+                        valve->state = VALVE_CLOSING;
+                    }
+                }
+            }
+            break;
+
+        case VALVE_OPENING:
+        case VALVE_CLOSING:
+            // Immediately stop movement if target changes
+            delta = valve->target_openness - valve->current_openness;
+            if ((valve->state == VALVE_OPENING && delta <= POSITION_TOLERANCE) ||
+                (valve->state == VALVE_CLOSING && -delta <= POSITION_TOLERANCE)) {
+                // Stop movement and enter cooldown
+                HAL_GPIO_WritePin(valve->state == VALVE_OPENING ? valve->busO : valve->busC,
+                                 valve->state == VALVE_OPENING ? valve->pinO : valve->pinC,
+                                 GPIO_PIN_RESET);
+                valve->cooldown_end_time = now + MOVEMENT_COOLDOWN_DELAY;
+                valve->state = VALVE_COOLDOWN;
+                break;
+            }
+
+            // Continue normal movement
+            elapsed = now - valve->start_time;
+            if (elapsed >= valve->move_duration) {
+                // Movement complete
+                HAL_GPIO_WritePin(valve->state == VALVE_OPENING ? valve->busO : valve->busC,
+                                 valve->state == VALVE_OPENING ? valve->pinO : valve->pinC,
+                                 GPIO_PIN_RESET);
+                valve->current_openness = valve->target_openness;
+                valve->cooldown_end_time = now + MOVEMENT_COOLDOWN_DELAY;
+                valve->state = VALVE_COOLDOWN;
+            } else {
+                // Update position based on elapsed time
+                if (valve->state == VALVE_OPENING) {
+                    valve->current_openness = ((elapsed * 255) / valve->timeO) +
+                                            (valve->target_openness - ((valve->move_duration * 255) / valve->timeO));
+                } else {
+                    valve->current_openness = valve->target_openness +
+                                            ((valve->move_duration * 255) / valve->timeC) -
+                                            ((elapsed * 255) / valve->timeC);
+                }
+            }
+            break;
+
+        case VALVE_COOLDOWN:
+            if (now >= valve->cooldown_end_time) {
+                valve->state = VALVE_IDLE;
+            }
+            break;
+
+        default:
+            valve->state = VALVE_IDLE;
+            break;
+    }
+}
+
+
+/*
+ * OG VERSION DONT DELETE
 void valve_update(ValveController* valve) {
     uint32_t now = HAL_GetTick();
     int16_t delta;
@@ -102,38 +190,56 @@ void valve_update(ValveController* valve) {
             break;
     }
 }
+*/
+
+
 
 
 void valve_calibrate(ValveController* valve){
   	uint32_t timeRef1 = 0;
   	uint32_t timeRef2 = 0;
+  	HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, 0);
+	HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+	HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, 1);
+	HAL_Delay(4000);
+	HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, 0);
+	HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+	HAL_Delay(1000);
 	while(1){
 		HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, 0);
 		HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
-		while (valve->isMax){
+		valve->isMax = 0;
+		HAL_Delay(1000);
+
+		while (!valve->isMax){
 			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
 				HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
 				valve->isMax = 1;
 			}
 		}
-
+		HAL_Delay(1000);
 		timeRef2 = HAL_GetTick();
 		HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
 		HAL_GPIO_WritePin(valve->busO, valve->pinO, 1);
+		valve->isMax = 0;
+		HAL_Delay(6000);
 		while (!valve->isMax){
 			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
-				valve->timeO = HAL_GetTick() - timeRef1;
+				valve->timeO = (uint32_t)(HAL_GetTick() - timeRef1)/2.83;
 				HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
 				valve->isMax = 1;
 			}
 		}
 
+		HAL_Delay(1000);
 		timeRef1 = HAL_GetTick();
 		HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
 		HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
+		valve->isMax = 0;
+		HAL_Delay(4000);
 		while (!valve->isMax){
 			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
-				valve->timeC = HAL_GetTick() - timeRef1;
+				valve->timeC = (HAL_GetTick() - timeRef1);
 				HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
 				valve->isMax = 1;
 			}
@@ -142,132 +248,20 @@ void valve_calibrate(ValveController* valve){
 	}
 }
 
-
-/*
-void valve_set_openness(ValveController* valve, uint8_t openness) {
-    valve->target_openness = openness;
-    // Do NOT touch GPIO here — let valve_update() handle line control
+void valve_close(ValveController* valve){
+	HAL_Delay(1000);
+	HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
+	HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
+	valve->isMax = 0;
+	HAL_Delay(4000);
+	while (!valve->isMax){
+		if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
+			HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
+			valve->isMax = 1;
+		}
+	}
 }
 
-void valve_update(ValveController* valve) {
-    uint32_t now = HAL_GetTick();
-
-    switch (valve->state) {
-        case VALVE_IDLE:
-            if (valve->target_openness != valve->current_openness) {
-                int16_t delta = (int16_t)valve->target_openness - (int16_t)valve->current_openness;
-
-                if (delta > 0) {
-                    // Start opening
-                    valve->move_duration = ((uint32_t)delta * valve->timeO) / 255;
-                    valve->start_time = now;
-                    HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_SET);
-                    valve->state = VALVE_OPENING;
-                } else if (delta < 0){
-                    // Start closing
-                    valve->move_duration = ((uint32_t)(-delta) * valve->timeC) / 255;
-                    valve->start_time = now;
-                    HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_SET);
-                    valve->state = VALVE_CLOSING;
-                }
-                else {
-                	HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_RESET);
-                	HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_RESET);
-                }
-            }
-            break;
-
-        case VALVE_OPENING:
-            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)) {
-                // Not moving when it should be → possibly fully open
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_RESET);
-
-                // Assume fully open → recalibrate
-                valve->current_openness = 255;
-
-                // Retry to reach target if needed
-                valve->state = VALVE_IDLE;
-                break;
-            }
-
-            if ((now - valve->start_time) >= valve->move_duration) {
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_RESET);
-                valve->current_openness = valve->target_openness;
-                valve->state = VALVE_IDLE;
-            }
-            break;
-
-        case VALVE_CLOSING:
-            if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)) {
-                // Not moving when it should be → possibly fully closed
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_RESET);
-
-                // Assume fully closed → recalibrate
-                valve->current_openness = 0;
-
-                // Retry to reach target if needed
-                valve->state = VALVE_IDLE;
-                break;
-            }
-
-            if ((now - valve->start_time) >= valve->move_duration) {
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_RESET);
-                valve->current_openness = valve->target_openness;
-                valve->state = VALVE_IDLE;
-            }
-            break;
-        default:
-        	valve->state = VALVE_IDLE;
-        	break;
-    }
-}
-*/
-
-
-
-/*
-void valve_update(ValveController* valve) {
-    uint32_t now = HAL_GetTick();
-
-    switch (valve->state) {
-        case VALVE_IDLE:
-            if (valve->target_openness != valve->current_openness) {
-                int16_t delta = (int16_t)valve->target_openness - (int16_t)valve->current_openness;
-
-                if (delta > 0) {
-                    // Open
-                    valve->move_duration = ((uint32_t)delta * valve->timeO) / 255;
-                    valve->start_time = now;
-                    HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_SET);
-                    valve->state = VALVE_OPENING;
-                } else {
-                    // Close
-                    valve->move_duration = ((uint32_t)(-delta) * valve->timeC) / 255;
-                    valve->start_time = now;
-                    HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_SET);
-                    valve->state = VALVE_CLOSING;
-                }
-            }
-            break;
-
-        case VALVE_OPENING:
-            if ((now - valve->start_time) >= valve->move_duration) {
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busO, valve->pinO, GPIO_PIN_RESET);
-                valve->current_openness = valve->target_openness;
-                valve->state = VALVE_IDLE;
-            }
-            break;
-
-        case VALVE_CLOSING:
-            if ((now - valve->start_time) >= valve->move_duration) {
-                HAL_GPIO_WritePin((GPIO_TypeDef*)valve->busC, valve->pinC, GPIO_PIN_RESET);
-                valve->current_openness = valve->target_openness;
-                valve->state = VALVE_IDLE;
-            }
-            break;
-    }
-}
-*/
 
 #define ADC_MOVING_THRESHOLD 100  // Adjust to match your signal levels
 /*

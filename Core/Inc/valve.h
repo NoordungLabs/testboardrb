@@ -13,7 +13,9 @@
 typedef enum {
     VALVE_IDLE,
     VALVE_OPENING,
-    VALVE_CLOSING
+    VALVE_CLOSING,
+	VALVE_WAIT_DIRECTION_CHANGE,  // Waiting before reversing
+	VALVE_COOLDOWN
 } ValveState;
 
 typedef struct {
@@ -32,7 +34,23 @@ typedef struct {
     ValveState state;
     uint32_t start_time;           // ms
     uint32_t move_duration;        // ms
-    uint8_t is_opening;            // 1 = opening, 0 = closing
+    uint8_t is_opening;
+    uint32_t wait_start_time;
+    /*
+    uint32_t endstop_check_time;
+	uint32_t direction_change_time;
+	uint32_t cooldown_end_time;    // New variable for cooldown period
+	uint8_t last_direction;
+	*/
+    // Timing control
+    // Timing control
+    uint32_t direction_change_time;
+    uint32_t cooldown_end_time;
+
+    // Movement tracking
+    uint8_t last_direction;          // 0=closing, 1=opening
+    uint8_t movement_start_position; // Position when movement began
+    uint32_t last_update_time;       // Last position update time
 } ValveController;
 
 //ValveController valve = {0, 0, VALVE_IDLE, 0, 0};

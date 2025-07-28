@@ -1,3 +1,4 @@
 ../Core/Src/valve.c:9:6:valve_set_openness	16	static
-../Core/Src/valve.c:15:6:valve_update	32	static
-../Core/Src/valve.c:107:6:valve_calibrate	24	static
+../Core/Src/valve.c:21:6:valve_update	32	static
+../Core/Src/valve.c:198:6:valve_calibrate	24	static
+../Core/Src/valve.c:251:6:valve_close	16	static
