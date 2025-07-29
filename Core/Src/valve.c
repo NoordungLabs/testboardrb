@@ -16,7 +16,7 @@ void valve_set_openness(ValveController* valve, uint8_t openness) {
 
 #define DIRECTION_CHANGE_DELAY    1000    // Delay before changing direction
 #define MOVEMENT_COOLDOWN_DELAY   1000    // Delay after movement completes
-#define POSITION_TOLERANCE         2     // Allowable position difference
+#define POSITION_TOLERANCE         0     // Allowable position difference
 
 void valve_update(ValveController* valve) {
     uint32_t now = HAL_GetTick();
@@ -218,28 +218,28 @@ void valve_calibrate(ValveController* valve){
 			}
 		}
 		HAL_Delay(1000);
-		timeRef2 = HAL_GetTick();
+		timeRef1 = HAL_GetTick();
 		HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
 		HAL_GPIO_WritePin(valve->busO, valve->pinO, 1);
 		valve->isMax = 0;
 		HAL_Delay(6000);
 		while (!valve->isMax){
 			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
-				valve->timeO = (uint32_t)(HAL_GetTick() - timeRef1)/2.83;
+				valve->timeO = (HAL_GetTick() - timeRef1);///valve->valvecal;
 				HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
 				valve->isMax = 1;
 			}
 		}
 
 		HAL_Delay(1000);
-		timeRef1 = HAL_GetTick();
+		timeRef2 = HAL_GetTick();
 		HAL_GPIO_WritePin(valve->busO, valve->pinO, 0);
 		HAL_GPIO_WritePin(valve->busC, valve->pinC, 1);
 		valve->isMax = 0;
-		HAL_Delay(4000);
+		HAL_Delay(6000);
 		while (!valve->isMax){
 			if (!HAL_GPIO_ReadPin((GPIO_TypeDef*)valve->funBus, valve->funPin)){
-				valve->timeC = (HAL_GetTick() - timeRef1);
+				valve->timeC = (HAL_GetTick() - timeRef2);
 				HAL_GPIO_WritePin(valve->busC, valve->pinC, 0);
 				valve->isMax = 1;
 			}

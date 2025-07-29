@@ -52,7 +52,8 @@ ValveController bal1 = {
     .target_openness = 0,
     .state = VALVE_IDLE,
     .start_time = 0,
-    .move_duration = 0
+    .move_duration = 0,
+	.valvecal = 2.83
 };
 
 struct Packet *rx;
@@ -64,13 +65,14 @@ ValveController bal2 = {
     .busC = (int)GPIOB,
 	.funPin = GPIO_PIN_11,
 	.funBus = (int)GPIOB,
-    .timeO = 9200 *1.2,  // Full open time in ms
-    .timeC = 11500 * 1.2,  // Full close time in ms
+    .timeO = 6500,  // Full open time in ms
+    .timeC = 6500,  // Full close time in ms
     .current_openness = 0,
     .target_openness = 0,
     .state = VALVE_IDLE,
     .start_time = 0,
-    .move_duration = 0
+    .move_duration = 0,
+	.valvecal = 2.83
 };
 
 /*
@@ -171,6 +173,7 @@ int main(void)
   MX_DMA_Init();
   MX_I2C3_Init();
   MX_USART1_UART_Init();
+  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   muxInit();
@@ -188,7 +191,8 @@ int main(void)
   valve_set_openness(&bal1, 127);
   valve_update(&bal1);
   */
-  valve_calibrate(&bal1);
+  //valve_calibrate(&bal1);
+  //valve_calibrate(&bal2);
   //valve_close(&bal1);
   /* USER CODE END 2 */
 
@@ -204,6 +208,7 @@ int main(void)
 
 		  if (flag){
 			  valve_set_openness(&bal1, 255);
+			  valve_set_openness(&bal2, 128);
 			  /*
 			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
 			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
@@ -214,6 +219,7 @@ int main(void)
 		  }
 		  else {
 			  valve_set_openness(&bal1, 100);
+			  valve_set_openness(&bal2, 0);
 			  /*
 			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
 			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
@@ -245,6 +251,7 @@ int main(void)
 	  send_packet_dma(&Pressure);
 
 	  valve_update(&bal1); //Purely while debugging
+	  valve_update(&bal2); //Purely while debugging
 
 	  uint32_t time = HAL_GetTick();
 

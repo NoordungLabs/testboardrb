@@ -36,6 +36,7 @@ typedef struct {
     uint32_t move_duration;        // ms
     uint8_t is_opening;
     uint32_t wait_start_time;
+    float valvecal;
     /*
     uint32_t endstop_check_time;
 	uint32_t direction_change_time;
