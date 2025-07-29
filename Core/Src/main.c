@@ -75,6 +75,8 @@ ValveController bal2 = {
 	.valvecal = 2.83
 };
 
+struct Packet Command;
+
 /*
 Solenoid air1 	=	{GPIO_PIN_2, GPIOD, GPIO_PIN_1, GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
 Solenoid air2 	=	{GPIO_PIN_3, GPIOB, GPIO_PIN_3, GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
@@ -130,6 +132,13 @@ void on_packet_received(struct Packet *p) {
 uint8_t isCon;
 uint8_t isOn;
 uint8_t ballin;
+
+void on_packet_received(struct Packet *p) {
+	Command.type = p->type;
+	Command.size = p->size;
+	Command.payload = p->payload;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -173,12 +182,11 @@ int main(void)
   MX_DMA_Init();
   MX_I2C3_Init();
   MX_USART1_UART_Init();
-  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
-  nslp_dma_init(&huart1, &hcrc);
+  //nslp_init(&huart1, &hcrc);
   //nslp_set_rx_callback(on_packet_received);
 
   HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
@@ -247,8 +255,8 @@ int main(void)
 			.payload = temperatureArray
 		};
 
-	  send_packet_dma(&Temperature);
-	  send_packet_dma(&Pressure);
+	  //nslp_send_packet(&Temperature);
+	  //nslp_send_packet(&Pressure);
 
 	  valve_update(&bal1); //Purely while debugging
 	  valve_update(&bal2); //Purely while debugging
@@ -284,11 +292,7 @@ int main(void)
 		  timepre = time;
 	  }
 
-	  rx = nslp_get_received_packet();
-	  if (rx && rx->payload != NULL) {
 
-		  uint8_t yay = 1;
-	  }
 
 
 	  /*
@@ -469,8 +473,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV1;
-  RCC_OscInitStruct.PLL.PLLN = 8;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV5;
+  RCC_OscInitStruct.PLL.PLLN = 32;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
@@ -484,11 +488,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV64;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
   {
     Error_Handler();
   }
@@ -541,7 +545,7 @@ static void MX_I2C3_Init(void)
 
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
-  hi2c3.Init.Timing = 0x00503D58;
+  hi2c3.Init.Timing = 0x00000000;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;

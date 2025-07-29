@@ -1,7 +1,7 @@
 // nslp_dma.h
 #ifndef NSLP_DMA_H
 #define NSLP_DMA_H
-
+/*
 #include "stm32g4xx_hal.h"
 #include <stdint.h>
 #include <stddef.h>
@@ -35,5 +35,30 @@ void nslp_dma_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc);
 void send_packet_dma(struct Packet *p);
 void nslp_start_rx_idle_dma(void);
 struct Packet* nslp_get_received_packet(void);
+*/
 
+#include "stm32g4xx_hal.h"
+
+#define FRAME_START 0x7E
+#define FRAME_START_SIZE 1
+#define HEADER_SIZE 2
+#define CHECKSUM_SIZE 4
+#define MAX_PAYLOAD_SIZE 255
+#define MAX_PACKET_SIZE (FRAME_START_SIZE + HEADER_SIZE + MAX_PAYLOAD_SIZE + CHECKSUM_SIZE)
+#define TX_QUEUE_LENGTH 4
+
+struct Packet {
+    uint8_t type;
+    uint8_t size;
+    uint8_t *payload;
+};
+
+// Public API
+void nslp_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc);
+void nslp_send_packet(struct Packet *packet);
+void nslp_set_rx_callback(void (*callback)(struct Packet*));
+
+// These must be called from stm32f3xx_it.c
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size);
 #endif // NSLP_DMA_H
