@@ -54,6 +54,7 @@ void startSensorReadSequence(void);
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c);
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c);
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c);
+void ProcessSensorData(uint8_t sensorIndex);
 
 
 

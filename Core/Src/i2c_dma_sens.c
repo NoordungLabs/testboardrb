@@ -21,6 +21,8 @@ float calibration[NUM_OF_SENSORS] = { 10000 / 1.5 / 1.10 / 5, 3000 / 1.40 / 2, 2
 float tempcal[NUM_OF_SENSORS] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };
 float runningAveragePressure[NUM_OF_SENSORS][RUNAVGAM];
 float runningAverageTemperature[NUM_OF_SENSORS][RUNAVGAM];
+float rawPressureArray[NUM_OF_SENSORS];
+float rawTemperatureArray[NUM_OF_SENSORS];
 
 const int selectPins[3] = { GPIO_PIN_10, GPIO_PIN_9, GPIO_PIN_8 };
 
@@ -61,7 +63,7 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
         HAL_I2C_Master_Receive_DMA(&hi2c3, 0x7F << 1, receiveArray, 5);
     }
 }
-
+/*
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
     if (hi2c != &hi2c3) return;
 
@@ -112,6 +114,28 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
     selectMuxPin(currentSensor);
     HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
 }
+*/
+
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    if (hi2c != &hi2c3) return;
+
+    // Extract raw data from receiveArray
+    uint32_t rawPressure = (receiveArray[0] << 16) | (receiveArray[1] << 8) | receiveArray[2];
+    uint16_t rawTemperature = (receiveArray[3] << 8) | receiveArray[4];
+
+    // Store raw data into arrays for later processing
+    rawPressureArray[currentSensor] = rawPressure;
+    rawTemperatureArray[currentSensor] = rawTemperature;
+
+    // Move to next sensor and trigger next DMA
+    currentSensor = (currentSensor + 1) % NUM_OF_SENSORS;
+    dmaStep = 0;
+    selectMuxPin(currentSensor);
+    HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
+}
+
+
+
 
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     if (hi2c != &hi2c3) return;
@@ -123,6 +147,52 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
     dmaStep = 0;
     selectMuxPin(currentSensor);
     HAL_I2C_Master_Transmit_DMA(&hi2c3, 0x7F << 1, instructionArray, 2);
+}
+
+void ProcessSensorData(uint8_t sensorIndex) {
+    uint32_t rawPressure = rawPressureArray[sensorIndex];
+    uint16_t rawTemperature = rawTemperatureArray[sensorIndex];
+
+    float fpressureData = rawPressure;
+    float fpressureData2;
+
+    if (fpressureData >= 8388608) {
+        fpressureData2 = (fpressureData - 16777216.0f) * Fullscale_P * calibration[sensorIndex] / 8388608.0f;
+    } else {
+        fpressureData2 = fpressureData / 8388608.0f * Fullscale_P * calibration[sensorIndex];
+    }
+
+    float truePressure = fpressureData2;
+    float pressureSum = 0;
+
+    for (uint8_t j = 0; j < RUNAVGAM; j++) {
+        if (j == RUNAVGAM - 1) {
+            runningAveragePressure[sensorIndex][j] = truePressure;
+        } else {
+            runningAveragePressure[sensorIndex][j] = runningAveragePressure[sensorIndex][j + 1];
+        }
+        pressureSum += runningAveragePressure[sensorIndex][j];
+    }
+
+    float pressureAverage = pressureSum / RUNAVGAM;
+
+    float ftemperature = rawTemperature;
+    float trueTemperature = ftemperature / 256.0f * tempcal[sensorIndex];
+    float temperatureSum = 0;
+
+    for (uint8_t j = 0; j < RUNAVGAM; j++) {
+        if (j == RUNAVGAM - 1) {
+            runningAverageTemperature[sensorIndex][j] = trueTemperature;
+        } else {
+            runningAverageTemperature[sensorIndex][j] = runningAverageTemperature[sensorIndex][j + 1];
+        }
+        temperatureSum += runningAverageTemperature[sensorIndex][j];
+    }
+
+    float temperatureAverage = temperatureSum / RUNAVGAM;
+
+    pressureArray[sensorIndex] = pressureAverage;
+    temperatureArray[sensorIndex] = temperatureAverage;
 }
 
 
