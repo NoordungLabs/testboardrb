@@ -186,8 +186,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
-  //nslp_init(&huart1, &hcrc);
-  //nslp_set_rx_callback(on_packet_received);
+  nslp_init(&huart1, &hcrc);
+  nslp_set_rx_callback(on_packet_received);
 
   HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
   HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
@@ -255,8 +255,8 @@ int main(void)
 			.payload = temperatureArray
 		};
 
-	  //nslp_send_packet(&Temperature);
-	  //nslp_send_packet(&Pressure);
+	  nslp_send_packet(&Temperature);
+	  nslp_send_packet(&Pressure);
 
 	  valve_update(&bal1); //Purely while debugging
 	  valve_update(&bal2); //Purely while debugging
