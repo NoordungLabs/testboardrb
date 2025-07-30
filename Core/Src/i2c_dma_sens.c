@@ -17,7 +17,7 @@ uint8_t receiveArray[5];
 
 float pressureArray[NUM_OF_SENSORS];
 float temperatureArray[NUM_OF_SENSORS];
-float calibration[NUM_OF_SENSORS] = { 10000 / 1.5 / 1.10 / 5, 3000 / 1.40 / 2, 2000, 1200.0 / 1.3, 1, 1, 1, 1, 1, 1 };
+float calibration[NUM_OF_SENSORS] = { 10000 / 1.5  / 5/1.3, 3000 / 1.40 /2*1.1 , 2000, 1200.0, 1, 1, 1, 1, 1, 1 };
 float tempcal[NUM_OF_SENSORS] = { 2.15, 2, 2.15, 2, 1, 1, 1, 1, 1, 1 };
 float runningAveragePressure[NUM_OF_SENSORS][RUNAVGAM];
 float runningAverageTemperature[NUM_OF_SENSORS][RUNAVGAM];

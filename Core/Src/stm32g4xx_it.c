@@ -309,6 +309,10 @@ void DMAMUX_OVR_IRQHandler(void)
   /* USER CODE BEGIN DMAMUX_OVR_IRQn 0 */
 
   /* USER CODE END DMAMUX_OVR_IRQn 0 */
+  // Handle DMA1_Channel2
+  HAL_DMAEx_MUX_IRQHandler(&hdma_i2c3_rx);
+  // Handle DMA1_Channel4
+  HAL_DMAEx_MUX_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMAMUX_OVR_IRQn 1 */
 
   /* USER CODE END DMAMUX_OVR_IRQn 1 */

@@ -249,7 +249,7 @@ int main(void)
 	  }
 
 
-	  if (timec - psend > 400){
+	  if (timec - psend > 100){
 		  struct Packet Pressure = {
 		 			.type = 'p',
 		 			.size = sizeof(pressureArray),
@@ -258,7 +258,7 @@ int main(void)
 		  nslp_send_packet(&Pressure);
 		  psend = timec;
 	  }
-	  if (timec - tsend > 400){
+	  if (timec - tsend > 100){
 		  struct Packet Temperature = {
 		  			.type = 't',
 		  			.size = sizeof(temperatureArray),
