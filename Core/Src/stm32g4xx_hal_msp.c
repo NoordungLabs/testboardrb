@@ -347,7 +347,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     pSyncConfig.SyncSignalID = HAL_DMAMUX1_SYNC_DMAMUX1_CH1_EVT;
     pSyncConfig.SyncPolarity = HAL_DMAMUX_SYNC_RISING;
     pSyncConfig.SyncEnable = ENABLE;
-    pSyncConfig.EventEnable = ENABLE;
+    pSyncConfig.EventEnable = DISABLE;
     pSyncConfig.RequestNumber = 1;
     if (HAL_DMAEx_ConfigMuxSync(&hdma_usart1_tx, &pSyncConfig) != HAL_OK)
     {
