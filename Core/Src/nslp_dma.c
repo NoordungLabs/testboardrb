@@ -19,11 +19,11 @@ static uint8_t tx_busy = 0;
 void nslp_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc) {
     nslp_uart = huart;
     nslp_crc = hcrc;
-    /*
+
     __HAL_UART_ENABLE_IT(nslp_uart, UART_IT_IDLE);
     HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
     __HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
-    */
+
 }
 
 void nslp_set_rx_callback(void (*callback)(struct Packet *)) {
@@ -113,5 +113,12 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
 
     HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
     __HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+    if (huart == nslp_uart) {
+        // Set a breakpoint or log error
+    	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+    }
 }
 
