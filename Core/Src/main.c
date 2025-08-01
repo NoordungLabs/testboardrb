@@ -192,6 +192,7 @@ int main(void)
   nslp_init(&huart1, &hcrc);
   nslp_set_rx_callback(on_packet_received);
 
+
   HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
   HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
   /*
@@ -633,6 +634,7 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  __HAL_LINKDMA(&huart1, hdmarx, hdma_usart1_rx);
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
@@ -763,6 +765,8 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+	  HAL_Delay(1000);
   }
   /* USER CODE END Error_Handler_Debug */
 }

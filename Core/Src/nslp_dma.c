@@ -21,7 +21,10 @@ void nslp_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc) {
     nslp_crc = hcrc;
 
     __HAL_UART_ENABLE_IT(nslp_uart, UART_IT_IDLE);
-    HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
+    HAL_StatusTypeDef r = HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
+    if (r != HAL_OK) {
+        Error_Handler(); // or blink LED here
+    }
     __HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 
 }
@@ -95,6 +98,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
     uint32_t received_crc;
     memcpy(&received_crc, &rx_buffer[3 + payload_size], 4);
 
+    __HAL_CRC_DR_RESET(nslp_crc);
     uint32_t computed_crc = HAL_CRC_Calculate(nslp_crc, (uint32_t *)&rx_buffer[1], HEADER_SIZE + payload_size);
     if (received_crc != computed_crc) {
         HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
