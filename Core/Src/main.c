@@ -137,6 +137,7 @@ void on_packet_received(struct Packet *p) {
 	Command.type = p->type;
 	Command.size = p->size;
 	Command.payload = p->payload;
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
 }
 
 /* USER CODE END 0 */
@@ -188,8 +189,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   muxInit();
   startSensorReadSequence();
-  nslp_init(&huart1, &hcrc);
-  nslp_set_rx_callback(on_packet_received);
+  //nslp_init(&huart1, &hcrc);
+  //nslp_set_rx_callback(on_packet_received);
 
   HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
   HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
@@ -255,7 +256,7 @@ int main(void)
 		 			.size = sizeof(pressureArray),
 		 			.payload = pressureArray
 		 		};
-		  nslp_send_packet(&Pressure);
+		  //nslp_send_packet(&Pressure);
 		  psend = timec;
 	  }
 	  if (timec - tsend > 100){
@@ -264,7 +265,7 @@ int main(void)
 		  			.size = sizeof(temperatureArray),
 		  			.payload = temperatureArray
 		  		};
-		  nslp_send_packet(&Temperature);
+		  //nslp_send_packet(&Temperature);
 		  tsend = timec;
 	  }
 
@@ -516,11 +517,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV4;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV16;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV8;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV16;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -573,7 +574,7 @@ static void MX_I2C3_Init(void)
 
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
-  hi2c3.Init.Timing = 0x00000103;
+  hi2c3.Init.Timing = 0x00100D14;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
