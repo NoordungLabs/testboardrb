@@ -302,7 +302,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     /* USART1 DMA Init */
     /* USART1_RX Init */
-    hdma_usart1_rx.Instance = DMA2_Channel5;
+    hdma_usart1_rx.Instance = DMA1_Channel6;
     hdma_usart1_rx.Init.Request = DMA_REQUEST_USART1_RX;
     hdma_usart1_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
     hdma_usart1_rx.Init.PeriphInc = DMA_PINC_DISABLE;

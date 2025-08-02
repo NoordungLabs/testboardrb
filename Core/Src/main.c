@@ -212,6 +212,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //Command = *receive_packet(&huart1, &hcrc);
 	  timec = HAL_GetTick();
 	  if (timec - timeref1 > 10000){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
@@ -634,7 +635,6 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  __HAL_LINKDMA(&huart1, hdmarx, hdma_usart1_rx);
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
@@ -675,9 +675,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
+  /* DMA1_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
   /* DMAMUX_OVR_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMAMUX_OVR_IRQn);

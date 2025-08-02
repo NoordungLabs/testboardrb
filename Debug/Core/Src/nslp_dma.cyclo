@@ -5,3 +5,4 @@
 ../Core/Src/nslp_dma.c:69:6:HAL_UART_TxCpltCallback	2
 ../Core/Src/nslp_dma.c:78:6:HAL_UARTEx_RxEventCallback	7
 ../Core/Src/nslp_dma.c:122:6:HAL_UART_ErrorCallback	2
+../Core/Src/nslp_dma.c:137:16:receive_packet	8

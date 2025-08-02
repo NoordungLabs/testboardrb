@@ -57,6 +57,7 @@ struct Packet {
 void nslp_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc);
 void nslp_send_packet(struct Packet *packet);
 void nslp_set_rx_callback(void (*callback)(struct Packet*));
+struct Packet* receive_packet(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc);
 
 // These must be called from stm32f3xx_it.c
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);

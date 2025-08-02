@@ -126,3 +126,62 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     }
 }
 
+
+ uint8_t receiveData[HEADER_SIZE + 255 + CHECKSUM_SIZE];
+struct Packet receiveInstance = {
+	0x00,
+	0,
+	NULL
+};
+
+struct Packet* receive_packet(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc) {
+	// Wait for frame start
+	uint8_t frameStart = 0;
+	if(HAL_UART_Receive_DMA(huart, &frameStart, FRAME_START_SIZE) != HAL_OK) {
+		return &receiveInstance;
+	}
+
+	if(frameStart != FRAME_START) {
+		return &receiveInstance;
+	}
+
+	// Receive header
+	if(HAL_UART_Receive_DMA(huart, receiveData, HEADER_SIZE) != HAL_OK) {
+		return &receiveInstance;
+	}
+
+	receiveInstance.type = (char) receiveData[0];
+	receiveInstance.size = receiveData[1];
+
+	if (receiveInstance.size == 0) {
+		return &receiveInstance;
+	}
+
+	// Read data
+	if(HAL_UART_Receive_DMA(huart, &receiveData[HEADER_SIZE], receiveInstance.size) != HAL_OK) {
+		return &receiveInstance;
+	}
+	receiveInstance.payload = &receiveData[HEADER_SIZE];
+
+	// Read checksum
+	if(HAL_UART_Receive_DMA(huart, &receiveData[HEADER_SIZE + receiveInstance.size], CHECKSUM_SIZE) != HAL_OK) {
+		return &receiveInstance;
+	}
+
+	// Perform checksum
+	uint32_t calculatedCrc = HAL_CRC_Calculate(
+		hcrc,
+		(uint32_t *) receiveData,
+		HEADER_SIZE + receiveInstance.size
+	);
+
+	uint32_t receivedCrc = *(uint32_t *) (&receiveData[HEADER_SIZE + receiveInstance.size]);
+	if (receivedCrc != calculatedCrc) {
+		return &receiveInstance;
+	}
+
+	return &receiveInstance;
+}
+
+
+

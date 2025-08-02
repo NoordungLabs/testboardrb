@@ -232,6 +232,20 @@ void DMA1_Channel2_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel6 global interrupt.
+  */
+void DMA1_Channel6_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel6_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel6_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart1_rx);
+  /* USER CODE BEGIN DMA1_Channel6_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel6_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART1 global interrupt / USART1 wake-up interrupt through EXTI line 25.
   */
 void USART1_IRQHandler(void)
@@ -243,20 +257,6 @@ void USART1_IRQHandler(void)
   /* USER CODE BEGIN USART1_IRQn 1 */
   //HAL_UART_IDLECallback(&huart1);  	  	  //remove this
   /* USER CODE END USART1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA2 channel5 global interrupt.
-  */
-void DMA2_Channel5_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA2_Channel5_IRQn 0 */
-
-  /* USER CODE END DMA2_Channel5_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart1_rx);
-  /* USER CODE BEGIN DMA2_Channel5_IRQn 1 */
-
-  /* USER CODE END DMA2_Channel5_IRQn 1 */
 }
 
 /**
@@ -295,7 +295,7 @@ void DMAMUX_OVR_IRQHandler(void)
   /* USER CODE BEGIN DMAMUX_OVR_IRQn 0 */
 
   /* USER CODE END DMAMUX_OVR_IRQn 0 */
-  // Handle DMA2_Channel5
+  // Handle DMA1_Channel6
   HAL_DMAEx_MUX_IRQHandler(&hdma_usart1_rx);
   // Handle DMA2_Channel6
   HAL_DMAEx_MUX_IRQHandler(&hdma_usart1_tx);
