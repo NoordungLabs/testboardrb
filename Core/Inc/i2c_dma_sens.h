@@ -19,7 +19,7 @@
 
 // Configuration constants
 #define NUM_OF_SENSORS 4
-#define RUNAVGAM 5
+#define RUNAVGAM 30
 #define Fullscale_P 4000.0f
 
 // External I2C handle (must be defined elsewhere)

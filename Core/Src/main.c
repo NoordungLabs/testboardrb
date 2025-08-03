@@ -77,7 +77,7 @@ ValveController bal2 = {
 
 struct Packet Command;
 
-/*
+
 Solenoid air1 	=	{GPIO_PIN_2, GPIOD, GPIO_PIN_1, GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
 Solenoid air2 	=	{GPIO_PIN_3, GPIOB, GPIO_PIN_3, GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
 Solenoid liq1 	=	{GPIO_PIN_4, GPIOB, GPIO_PIN_1, GPIOA, GPIO_PIN_0, GPIOA, 0, 0};
@@ -85,7 +85,7 @@ Solenoid liq2 	=	{GPIO_PIN_5, GPIOB, GPIO_PIN_3, GPIOA, GPIO_PIN_2, GPIOA, 0, 0}
 Solenoid ven1 	=	{GPIO_PIN_6, GPIOB, GPIO_PIN_5, GPIOA, GPIO_PIN_4, GPIOA, 0, 0};
 Solenoid ven2 	=	{GPIO_PIN_7, GPIOB, GPIO_PIN_7, GPIOA, GPIO_PIN_6, GPIOA, 0, 0};
 Ignitor ig1 	=	{GPIO_PIN_14, GPIOC, GPIO_PIN_10, GPIOB, GPIO_PIN_2, GPIOB, 0, 0};
-*/
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -111,20 +111,7 @@ static void MX_I2C3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
-/*
-void on_packet_received(struct Packet *p) {
-    switch (p->type) {
-        case 'a':
-            HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); // Example: toggle LED on type 'a'
-            break;
-        case 'b':
-            // Do something else
-            break;
-        default:
-            break;
-    }
-}
-*/
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -134,9 +121,35 @@ uint8_t isOn;
 uint8_t ballin;
 
 void on_packet_received(struct Packet *p) {
+	switch(p->type){
+	case('c'):
+		switch(p->payload[0]){
+		case(0x00):
+			(p->payload[1] & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
+			(p->payload[1] & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
+			(p->payload[1] & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
+			(p->payload[1] & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
+			(p->payload[1] & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
+			(p->payload[1] & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
+			(p->payload[1] & (1 << 6)) ? HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 1)   : HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 0);
+			break;
+		case(0xB0):
+			valve_set_openness(&bal1, p->payload[1]);
+			valve_update(&bal1);
+			break;
+		case(0xB1):
+			valve_set_openness(&bal2, p->payload[1]);
+			valve_update(&bal2);
+			break;
+		case(0xFF):
+			NVIC_SystemReset;
+			break;
+		}
+	break;
+	}
 	Command.type = p->type;
 	Command.size = p->size;
-	Command.payload = p->payload;
+	Command.payload = p->payload[1];
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_13);
 }
 
@@ -212,7 +225,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //Command = *receive_packet(&huart1, &hcrc);
 	  timec = HAL_GetTick();
 	  if (timec - timeref1 > 1000){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
@@ -258,7 +270,7 @@ int main(void)
 		 			.size = sizeof(pressureArray),
 		 			.payload = pressureArray
 		 		};
-		  //nslp_send_packet(&Pressure);
+		  nslp_send_packet(&Pressure);
 		  psend = timec;
 	  }
 	  if (timec - tsend > DELAY){
@@ -267,7 +279,7 @@ int main(void)
 		  			.size = sizeof(temperatureArray),
 		  			.payload = temperatureArray
 		  		};
-		  //nslp_send_packet(&Temperature);
+		  nslp_send_packet(&Temperature);
 		  tsend = timec;
 	  }
 
@@ -602,6 +614,10 @@ static void MX_I2C3_Init(void)
   {
     Error_Handler();
   }
+
+  /** I2C Fast mode Plus enable
+  */
+  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C3);
   /* USER CODE BEGIN I2C3_Init 2 */
   //__HAL_RCC_I2C3_CONFIG(RCC_I2C3CLKSOURCE_HSI);
   //__HAL_RCC_I2C3_CLK_ENABLE();
@@ -675,9 +691,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  /* DMA2_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
   /* DMAMUX_OVR_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMAMUX_OVR_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMAMUX_OVR_IRQn);
