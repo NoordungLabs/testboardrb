@@ -214,7 +214,7 @@ int main(void)
   {
 	  //Command = *receive_packet(&huart1, &hcrc);
 	  timec = HAL_GetTick();
-	  if (timec - timeref1 > 10000){
+	  if (timec - timeref1 > 1000){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
 		  timeref1 = timec;
 		  flag = !flag;
@@ -252,7 +252,7 @@ int main(void)
 	  }
 
 
-	  if (timec - psend > 100){
+	  if (timec - psend > 50){
 		  struct Packet Pressure = {
 		 			.type = 'p',
 		 			.size = sizeof(pressureArray),
@@ -261,7 +261,7 @@ int main(void)
 		  nslp_send_packet(&Pressure);
 		  psend = timec;
 	  }
-	  if (timec - tsend > 100){
+	  if (timec - tsend > 50){
 		  struct Packet Temperature = {
 		  			.type = 't',
 		  			.size = sizeof(temperatureArray),
@@ -576,7 +576,7 @@ static void MX_I2C3_Init(void)
 
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
-  hi2c3.Init.Timing = 0x00000103;
+  hi2c3.Init.Timing = 0x00000000;
   hi2c3.Init.OwnAddress1 = 0;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
