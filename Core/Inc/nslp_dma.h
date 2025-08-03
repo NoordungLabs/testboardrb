@@ -53,6 +53,8 @@ struct Packet {
     uint8_t size;
     uint8_t *payload;
 };
+extern volatile uint8_t nslp_rx_active;  // Declaration (no initialization)
+
 
 // Public API
 void nslp_init(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc);

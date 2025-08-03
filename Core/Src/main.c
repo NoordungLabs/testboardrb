@@ -121,6 +121,7 @@ uint8_t isOn;
 uint8_t ballin;
 
 void on_packet_received(struct Packet *p) {
+	/*
 	switch(p->type){
 	case('c'):
 		switch(p->payload[0]){
@@ -147,6 +148,7 @@ void on_packet_received(struct Packet *p) {
 		}
 	break;
 	}
+	*/
 	Command.type = p->type;
 	Command.size = p->size;
 	Command.payload = p->payload[1];
@@ -225,6 +227,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  CheckAndResumeI2C();
 	  timec = HAL_GetTick();
 	  if (timec - timeref1 > 1000){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);

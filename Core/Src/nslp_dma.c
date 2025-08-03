@@ -2,7 +2,7 @@
 #include "nslp_dma.h"
 #include <string.h>
 
-volatile uint8_t nspl_rx_active;  // External flag from another source file
+volatile uint8_t nslp_rx_active  = 0;  // External flag from another source file
 
 static UART_HandleTypeDef *nslp_uart;
 static CRC_HandleTypeDef *nslp_crc;
@@ -77,16 +77,16 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
     if (huart != nslp_uart) {
-    	nspl_rx_active = 0;
+    	nslp_rx_active  = 0;
 		HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
 		__HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 		return;
     }
 
-    nspl_rx_active = 1;
+    nslp_rx_active  = 1;
 
     if (rx_buffer[0] != FRAME_START) {
-    	nspl_rx_active = 0;
+    	nslp_rx_active  = 0;
 		HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
 		__HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 		return;
@@ -102,7 +102,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
     uint32_t computed_crc = HAL_CRC_Calculate(nslp_crc, (uint32_t *)&rx_buffer[1], HEADER_SIZE + payload_size);
 
     if (received_crc != computed_crc) {
-    	nspl_rx_active = 0;
+    	nslp_rx_active  = 0;
 		HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
 		__HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 		return;
@@ -119,7 +119,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size) {
     }
 
 
-    nspl_rx_active = 0;
+    nslp_rx_active  = 0;
     HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
     __HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 }
@@ -128,7 +128,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     if (huart != nslp_uart) return;
 
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);  // Error indicator
-    nspl_rx_active = 0; // clear RX flag on error too
+    nslp_rx_active  = 0; // clear RX flag on error too
     HAL_UARTEx_ReceiveToIdle_DMA(nslp_uart, rx_buffer, MAX_PACKET_SIZE);
     __HAL_DMA_DISABLE_IT(nslp_uart->hdmarx, DMA_IT_HT);
 }

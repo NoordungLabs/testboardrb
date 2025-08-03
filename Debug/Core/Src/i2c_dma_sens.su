@@ -1,7 +1,10 @@
-../Core/Src/i2c_dma_sens.c:29:6:selectMuxPin	24	static
-../Core/Src/i2c_dma_sens.c:39:6:muxInit	16	static
-../Core/Src/i2c_dma_sens.c:48:6:startSensorReadSequence	16	static
-../Core/Src/i2c_dma_sens.c:63:6:HAL_I2C_MasterTxCpltCallback	32	static
-../Core/Src/i2c_dma_sens.c:87:6:HAL_I2C_MasterRxCpltCallback	32	static
-../Core/Src/i2c_dma_sens.c:112:6:HAL_I2C_ErrorCallback	16	static
-../Core/Src/i2c_dma_sens.c:124:6:ProcessSensorData	80	static
+../Core/Src/i2c_dma_sens.c:35:6:selectMuxPin	24	static
+../Core/Src/i2c_dma_sens.c:45:6:muxInit	16	static
+../Core/Src/i2c_dma_sens.c:54:6:pauseI2COperations	4	static
+../Core/Src/i2c_dma_sens.c:58:6:resumeI2COperations	8	static
+../Core/Src/i2c_dma_sens.c:65:6:startSensorReadSequence	16	static
+../Core/Src/i2c_dma_sens.c:85:6:HAL_I2C_MasterTxCpltCallback	32	static
+../Core/Src/i2c_dma_sens.c:109:6:HAL_I2C_MasterRxCpltCallback	32	static
+../Core/Src/i2c_dma_sens.c:140:6:HAL_I2C_ErrorCallback	16	static
+../Core/Src/i2c_dma_sens.c:155:6:ProcessSensorData	80	static
+../Core/Src/i2c_dma_sens.c:211:6:CheckAndResumeI2C	8	static
