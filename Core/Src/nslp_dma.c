@@ -97,7 +97,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                     HAL_UART_Receive_DMA(nslp_uart, &rx_frame_start, 1);
                 }
             } else {
-            	rx_state = RX_WAIT_START;
+                rx_state = RX_WAIT_START;
                 HAL_UART_Receive_DMA(nslp_uart, &rx_frame_start, 1);
             }
             break;
@@ -111,9 +111,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
                 HAL_UART_Receive_DMA(nslp_uart, &rx_frame_start, 1);
                 return;
             }
-
-            rx_packet.size = rx_payload_size;
-            rx_packet.payload = &rx_tmp[2];
 
             rx_state = RX_PAYLOAD;
             if (HAL_UART_Receive_DMA(nslp_uart, &rx_tmp[2], rx_payload_size) != HAL_OK) {
@@ -138,6 +135,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             uint32_t computed_crc = HAL_CRC_Calculate(nslp_crc, (uint32_t *)rx_tmp, 2 + rx_payload_size);
 
             if (received_crc == computed_crc) {
+                rx_packet.size = rx_payload_size;
+                rx_packet.payload = &rx_tmp[2];  // ✅ Moved here — now safe
                 if (rx_callback) {
                     rx_callback(&rx_packet);
                 }
@@ -149,6 +148,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         }
     }
 }
+
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
     if (huart != nslp_uart) return;

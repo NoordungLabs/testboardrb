@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define DELAY 300 //Per baud rate 9600: 400ms 19200:200ms
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -252,22 +252,22 @@ int main(void)
 	  }
 
 
-	  if (timec - psend > 50){
+	  if (timec - psend > DELAY){
 		  struct Packet Pressure = {
 		 			.type = 'p',
 		 			.size = sizeof(pressureArray),
 		 			.payload = pressureArray
 		 		};
-		  nslp_send_packet(&Pressure);
+		  //nslp_send_packet(&Pressure);
 		  psend = timec;
 	  }
-	  if (timec - tsend > 50){
+	  if (timec - tsend > DELAY){
 		  struct Packet Temperature = {
 		  			.type = 't',
 		  			.size = sizeof(temperatureArray),
 		  			.payload = temperatureArray
 		  		};
-		  nslp_send_packet(&Temperature);
+		  //nslp_send_packet(&Temperature);
 		  tsend = timec;
 	  }
 
