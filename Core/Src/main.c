@@ -39,6 +39,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+uint8_t sysarm = 0;
 ValveController bal1 = {
     .pinO = GPIO_PIN_13,
     .busO = (int)GPIOC,
@@ -124,40 +125,45 @@ uint8_t isOn;
 uint8_t ballin;
 
 void on_packet_received(struct Packet *p) {
-	/*
+
 	switch(p->type){
 	case('c'):
 		switch(p->payload[0]){
-		case(0xA0):
+		case(SOLS_SET):
 			(p->payload[1] & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
 			(p->payload[1] & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
 			(p->payload[1] & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
 			(p->payload[1] & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
 			(p->payload[1] & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
 			(p->payload[1] & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
-			(p->payload[1] & (1 << 6)) ? HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 1)   : HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 0);
+			(p->payload[1] & (1 << 6)) ? HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 1) : HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 0);
+			(p->payload[1] & (1 << 7)) ? HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 1) : HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 0);
 			break;
-		case(0xB0):
+		case(BAL1_SET):
 			valve_set_openness(&bal1, p->payload[1]);
 			valve_update(&bal1);
 			break;
-		case(0xB1):
+		case(BAL1_CAL):
 			bal1.calibrate = 1;
 			break;
-		case(0xC0):
+		case(BAL2_SET):
 			valve_set_openness(&bal2, p->payload[1]);
 			valve_update(&bal2);
 			break;
-		case(0xC1):
+		case(BAL2_CAL):
 			bal2.calibrate = 1;
 			break;
-		case(0xFF):
+		case(ISYS_RST):
 			NVIC_SystemReset;
 			break;
+		case(ISYS_ARM):
+			sysarm = 1;
 		}
+
+
 	break;
 	}
-	*/
+
 	Command.type = p->type;
 	Command.size = p->size;
 	Command.payload = p->payload[1];
@@ -217,19 +223,6 @@ int main(void)
   nslp_set_rx_callback(on_packet_received);
 
 
-  HAL_GPIO_WritePin(bal2.busC, bal2.pinC, 0);
-  HAL_GPIO_WritePin(bal2.busO, bal2.pinO, 0);
-  /*
-  HAL_Delay(10000);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 0);
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_14, 0);
-
-  valve_set_openness(&bal1, 127);
-  valve_update(&bal1);
-  */
-  valve_calibrate(&bal2);
-  //valve_calibrate(&bal2);
-  //valve_close(&bal1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -237,238 +230,113 @@ int main(void)
   while (1)
   {
 	  CheckAndResumeI2C();
+
 	  timec = HAL_GetTick();
 	  if(bal1.calibrate){
 		  valve_calibrate(&bal1);
+		  bal1.calibrate = 0;
 	  }
 	  if(bal2.calibrate){
 		  valve_calibrate(&bal2);
-	  }
-	  if (timec - timeref1 > 10000){
-		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-		  timeref1 = timec;
-		  flag = !flag;
-
-		  if (flag){
-			  valve_set_openness(&bal1, 128);
-			  valve_set_openness(&bal2, 128);
-			  /*
-			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
-			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
-			  HAL_Delay(1000);
-			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 1);
-			  */
-
-		  }
-		  else {
-			  valve_set_openness(&bal1, 255);
-			  valve_set_openness(&bal2, 0);
-			  /*
-			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
-			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 0);
-			  HAL_Delay(1000);
-			  HAL_GPIO_WritePin(bal1.busO, bal1.pinO, 1);
-			  */
-		  }
-
+		  bal2.calibrate = 0;
 	  }
 
-	  //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-	  //HAL_Delay(1000);
-	  isOn = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-	  isCon = !HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_1);
-	  for (uint8_t i = 0; i < NUM_OF_SENSORS; i++){
-		  ProcessSensorData(i);
-	  }
+//Is line really on
+	uint8_t isOn = 0;
+	air1.isOn = HAL_GPIO_ReadPin(air1.onbus, air1.onpin);
+	air2.isOn = HAL_GPIO_ReadPin(air2.onbus, air2.onpin);
+	liq1.isOn = HAL_GPIO_ReadPin(liq1.onbus, liq1.onpin);
+	liq2.isOn = HAL_GPIO_ReadPin(liq2.onbus, liq2.onpin);
+	ven1.isOn = HAL_GPIO_ReadPin(ven1.onbus, ven1.onpin);
+	ven2.isOn = HAL_GPIO_ReadPin(ven2.onbus, ven2.onpin);
+	ig1.isOn  = HAL_GPIO_ReadPin(ig1.onbus, ig1.onpin);
+	(air1.isOn) ? (isOn |= (1 << 0)) : (isOn &= ~(1 << 0));
+	(air2.isOn) ? (isOn |= (1 << 1)) : (isOn &= ~(1 << 1));
+	(liq1.isOn) ? (isOn |= (1 << 2)) : (isOn &= ~(1 << 2));
+	(liq2.isOn) ? (isOn |= (1 << 3)) : (isOn &= ~(1 << 3));
+	(ven1.isOn) ? (isOn |= (1 << 4)) : (isOn &= ~(1 << 4));
+	(ven2.isOn) ? (isOn |= (1 << 5)) : (isOn &= ~(1 << 5));
+	(NoCo.isOn) ? (isOn |= (1 << 6)) : (isOn &= ~(1 << 6));
+	(ig1.isOn)  ? (isOn |= (1 << 7)) : (isOn &= ~(1 << 7));
+
+	//Check if relay is connected
+	uint8_t isCon = 0;
+	air1.isCon = !HAL_GPIO_ReadPin(air1.conBus, air1.conPin);
+	air2.isCon = !HAL_GPIO_ReadPin(air2.conBus, air2.conPin);
+	liq1.isCon = !HAL_GPIO_ReadPin(liq1.conBus, liq1.conPin);
+	liq2.isCon = !HAL_GPIO_ReadPin(liq2.conBus, liq2.conPin);
+	ven1.isCon = !HAL_GPIO_ReadPin(ven1.conBus, ven1.conPin);
+	ven2.isCon = !HAL_GPIO_ReadPin(ven2.conBus, ven2.conPin);
+	NoCo.isCon = !HAL_GPIO_ReadPin(NoCo.conBus, NoCo.conPin);
+	ig1.isCon  = !HAL_GPIO_ReadPin(ig1.conBus, ig1.conPin);
+	(air1.isCon) ? (isCon |= (1 << 0)) : (isCon &= ~(1 << 0));
+	(air2.isCon) ? (isCon |= (1 << 1)) : (isCon &= ~(1 << 1));
+	(liq1.isCon) ? (isCon |= (1 << 2)) : (isCon &= ~(1 << 2));
+	(liq2.isCon) ? (isCon |= (1 << 3)) : (isCon &= ~(1 << 3));
+	(ven1.isCon) ? (isCon |= (1 << 4)) : (isCon &= ~(1 << 4));
+	(ven2.isCon) ? (isCon |= (1 << 5)) : (isCon &= ~(1 << 5));
+	(NoCo.isCon) ? (isCon |= (1 << 6)) : (isCon &= ~(1 << 6));
+	(ig1.isCon)  ? (isCon |= (1 << 7)) : (isCon &= ~(1 << 7));
+
+	//Check if relay is open
+	uint8_t isFun = 0;
+	air1.isFun = HAL_GPIO_ReadPin(air1.funBus, air1.funPin);
+	air2.isFun = HAL_GPIO_ReadPin(air2.funBus, air2.funPin);
+	liq1.isFun = HAL_GPIO_ReadPin(liq1.funBus, liq1.funPin);
+	liq2.isFun = HAL_GPIO_ReadPin(liq2.funBus, liq2.funPin);
+	ven1.isFun = HAL_GPIO_ReadPin(ven1.funBus, ven1.funPin);
+	ven2.isFun = HAL_GPIO_ReadPin(ven2.funBus, ven2.funPin);
+	NoCo.isFun = !HAL_GPIO_ReadPin(NoCo.isFun, NoCo.funPin);
+	ig1.isFun  = HAL_GPIO_ReadPin(ig1.funBus, ig1.funPin);
+	(air1.isFun) ? (isFun |= (1 << 0)) : (isFun &= ~(1 << 0));
+	(air2.isFun) ? (isFun |= (1 << 1)) : (isFun &= ~(1 << 1));
+	(liq1.isFun) ? (isFun |= (1 << 2)) : (isFun &= ~(1 << 2));
+	(liq2.isFun) ? (isFun |= (1 << 3)) : (isFun &= ~(1 << 3));
+	(ven1.isFun) ? (isFun |= (1 << 4)) : (isFun &= ~(1 << 4));
+	(ven2.isFun) ? (isFun |= (1 << 5)) : (isFun &= ~(1 << 5));
+	(NoCo.isFun) ? (isFun |= (1 << 6)) : (isFun &= ~(1 << 6));
+	(ig1.isFun)  ? (isFun |= (1 << 7)) : (isFun &= ~(1 << 7));
 
 
-	  if (timec - psend > DELAY){
-		  struct Packet Pressure = {
-		 			.type = 'p',
-		 			.size = sizeof(pressureArray),
-		 			.payload = pressureArray
-		 		};
-		  nslp_send_packet(&Pressure);
-		  psend = timec;
-	  }
-	  if (timec - tsend > DELAY){
-		  struct Packet Temperature = {
-		  			.type = 't',
-		  			.size = sizeof(temperatureArray),
-		  			.payload = temperatureArray
-		  		};
-		  nslp_send_packet(&Temperature);
-		  tsend = timec;
-	  }
-
-	  /*
-	  struct Packet Pressure = {
-			.type = 'p',
-			.size = sizeof(pressureArray),
-			.payload = pressureArray
-		};
-
-	  struct Packet Temperature = {
-			.type = 't',
-			.size = sizeof(temperatureArray),
-			.payload = temperatureArray
-		};
-
-	  nslp_send_packet(&Temperature);
-	  nslp_send_packet(&Pressure);
-	  */
-
-
-	  valve_update(&bal1); //Purely while debugging
-	  valve_update(&bal2); //Purely while debugging
-
-	  uint32_t time = HAL_GetTick();
-
-	  if (time - timepre > 100){
-		  if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){
-			  switch (debug){
-			  case 0:
-				  valve_set_openness(&bal1, 0);
-				  break;
-			  case 1:
-				  valve_set_openness(&bal1, 255);
-				  break;
-			  case 2:
-				  valve_set_openness(&bal1, 127);
-				  break;
-			  case 3:
-				  valve_set_openness(&bal1, 100);
-				  break;
-			  case 4:
-				  valve_set_openness(&bal1, 200);
-				  break;
-			  default:
-				  break;
-
-			  }
-			  if (debug > 5 ){debug = 0;}
-			  else debug++;
-
-		  }
-		  timepre = time;
-	  }
-
-
-
-
-	  /*
-
-
-			switch(safeCopy.type){
-	  		case (SADD):
-				(c.payload & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
-				(c.payload & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
-				(c.payload & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
-				(c.payload & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
-				(c.payload & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
-				(c.payload & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
-				(c.payload & (1 << 6)) ? HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 1)   : HAL_GPIO_WritePin(ig1.onbus, ig1.onpin, 0);
-				break;
-	  		case (BADA1):
-				opento1 = c.payload;
-	  			break;
-	  		case (BADA2):
-				opento2 = c.payload;
-				break;
-			}
-
-	  //Is line really on
-	  		uint8_t isOn = 0;
-	  		air1.isOn = HAL_GPIO_ReadPin(air1.onbus, air1.onpin);
-	  		air2.isOn = HAL_GPIO_ReadPin(air2.onbus, air2.onpin);
-	  		liq1.isOn = HAL_GPIO_ReadPin(liq1.onbus, liq1.onpin);
-	  		liq2.isOn = HAL_GPIO_ReadPin(liq2.onbus, liq2.onpin);
-	  		ven1.isOn = HAL_GPIO_ReadPin(ven1.onbus, ven1.onpin);
-	  		ven2.isOn = HAL_GPIO_ReadPin(ven2.onbus, ven2.onpin);
-	  		ig1.isOn  = HAL_GPIO_ReadPin(ig1.onbus, ig1.onpin);
-	  		(air1.isOn) ? (isOn |= (1 << 0)) : (isOn &= ~(1 << 0));
-	  		(air2.isOn) ? (isOn |= (1 << 1)) : (isOn &= ~(1 << 1));
-	  		(liq1.isOn) ? (isOn |= (1 << 2)) : (isOn &= ~(1 << 2));
-	  		(liq2.isOn) ? (isOn |= (1 << 3)) : (isOn &= ~(1 << 3));
-	  		(ven1.isOn) ? (isOn |= (1 << 4)) : (isOn &= ~(1 << 4));
-	  		(ven2.isOn) ? (isOn |= (1 << 5)) : (isOn &= ~(1 << 5));
-	  		(ig1.isOn)  ? (isOn |= (1 << 6)) : (isOn &= ~(1 << 6));
-
-	  		//Check if relay is connected
-	  		uint8_t isCon = 0;
-	  		air1.isCon = !HAL_GPIO_ReadPin(air1.conBus, air1.conPin);
-	  		air2.isCon = !HAL_GPIO_ReadPin(air2.conBus, air2.conPin);
-	  		liq1.isCon = !HAL_GPIO_ReadPin(liq1.conBus, liq1.conPin);
-	  		liq2.isCon = !HAL_GPIO_ReadPin(liq2.conBus, liq2.conPin);
-	  		ven1.isCon = !HAL_GPIO_ReadPin(ven1.conBus, ven1.conPin);
-	  		ven2.isCon = !HAL_GPIO_ReadPin(ven2.conBus, ven2.conPin);
-	  		ig1.isCon  = !HAL_GPIO_ReadPin(ig1.conBus, ig1.conPin);
-	  		(air1.isCon) ? (isCon |= (1 << 0)) : (isCon &= ~(1 << 0));
-	  		(air2.isCon) ? (isCon |= (1 << 1)) : (isCon &= ~(1 << 1));
-	  		(liq1.isCon) ? (isCon |= (1 << 2)) : (isCon &= ~(1 << 2));
-	  		(liq2.isCon) ? (isCon |= (1 << 3)) : (isCon &= ~(1 << 3));
-	  		(ven1.isCon) ? (isCon |= (1 << 4)) : (isCon &= ~(1 << 4));
-	  		(ven2.isCon) ? (isCon |= (1 << 5)) : (isCon &= ~(1 << 5));
-	  		(ig1.isCon)  ? (isCon |= (1 << 6)) : (isCon &= ~(1 << 6));
-
-	  	  	//Check if relay is open
-	  		uint8_t isFun = 0;
-	  		air1.isFun = HAL_GPIO_ReadPin(air1.funBus, air1.funPin);
-	  		air2.isFun = HAL_GPIO_ReadPin(air2.funBus, air2.funPin);
-	  		liq1.isFun = HAL_GPIO_ReadPin(liq1.funBus, liq1.funPin);
-	  		liq2.isFun = HAL_GPIO_ReadPin(liq2.funBus, liq2.funPin);
-	  		ven1.isFun = HAL_GPIO_ReadPin(ven1.funBus, ven1.funPin);
-	  		ven2.isFun = HAL_GPIO_ReadPin(ven2.funBus, ven2.funPin);
-	  		ig1.isFun  = HAL_GPIO_ReadPin(ig1.funBus, ig1.funPin);
-	  		(air1.isFun) ? (isFun |= (1 << 0)) : (isFun &= ~(1 << 0));
-	  		(air2.isFun) ? (isFun |= (1 << 1)) : (isFun &= ~(1 << 1));
-	  		(liq1.isFun) ? (isFun |= (1 << 2)) : (isFun &= ~(1 << 2));
-	  		(liq2.isFun) ? (isFun |= (1 << 3)) : (isFun &= ~(1 << 3));
-	  		(ven1.isFun) ? (isFun |= (1 << 4)) : (isFun &= ~(1 << 4));
-	  		(ven2.isFun) ? (isFun |= (1 << 5)) : (isFun &= ~(1 << 5));
-	  		(ig1.isFun)  ? (isFun |= (1 << 6)) : (isFun &= ~(1 << 6));
-
-	  		valve_set_openness(&bal1, opento1);
-	  		valve_set_openness(&bal2, opento2);
-	  		valve_update(&bal1);
-	  		valve_update(&bal2);
+	valve_update(&bal1);
+	valve_update(&bal2);
 
 
   struct Packet Pressure = {
-		.type = 0xA0,
+		.type = 'p',
 		.size = sizeof(pressureArray),
 		.payload = pressureArray
 	};
 
   struct Packet Temperature = {
-		.type = 0xA1,
+		.type = 't',
 		.size = sizeof(temperatureArray),
 		.payload = temperatureArray
 	};
-
-  struct Packet Ball1State = {
+/*
+  struct Packet Bal1State = {
 		.type = 0xA3,
-		.size = sizeof(pressureArray),
-		.payload = pressureArray
+		.size = sizeof(bal1.state),
+		.payload = bal1.state
 	};
-
-  struct Packet Ball1CurrentPos = {
+*/
+  struct Packet Bal1CurrentPos = {
 		.type = 0xA4,
-		.size = sizeof(temperatureArray),
-		.payload = temperatureArray
+		.size = sizeof(bal1.current_openness),
+		.payload = bal1.current_openness
 	};
 
-
-  struct Packet Ball2State = {
+/*
+  struct Packet Bal2State = {
 		.type = 0xA5,
-		.size = sizeof(pressureArray),
-		.payload = pressureArray
+		.size = sizeof(bal2.state),
+		.payload = bal2.state
 	};
-
-  struct Packet Ball2CurrentPos = {
+*/
+  struct Packet Bal2CurrentPos = {
 		.type = 0xA6,
-		.size = sizeof(temperatureArray),
-		.payload = temperatureArray
+		.size = sizeof(bal2.current_openness),
+		.payload = bal2.current_openness
 	};
 
   struct Packet SolIsCon = {
@@ -489,21 +357,17 @@ int main(void)
 		.payload = isFun
 	};
 
-  send_packet_dma(&Temperature);
-  send_packet_dma(&Pressure);
-  send_packet_dma(&Bal1State);
-  send_packet_dma(&Bal1CurrentPos);
-  send_packet_dma(&Bal2State);
-  send_packet_dma(&Bal2CurrentPos);
-  send_packet_dma(&SolIsCon);
-  send_packet_dma(&SolIsOn);
-  send_packet_dma(&SolISFun);
-
-
-
-	  */
-
-
+  if (timec - timepre > DELAY){
+	  	nslp_send_packet(&Temperature);
+	    nslp_send_packet(&Pressure);
+	    //nslp_send_packet(&Bal1State);
+	    nslp_send_packet(&Bal1CurrentPos);
+	    //nslp_send_packet(&Bal2State);
+	    nslp_send_packet(&Bal2CurrentPos);
+	    nslp_send_packet(&SolIsCon);
+	    nslp_send_packet(&SolIsOn);
+	    nslp_send_packet(&SolISFun);
+  	  }
 
 
     /* USER CODE END WHILE */

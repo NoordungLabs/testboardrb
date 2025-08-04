@@ -10,6 +10,15 @@
 
 #include "stm32g4xx_hal.h"
 
+#define BAL1_CAL	0xB1
+#define BAL2_CAL	0xC1
+#define BAL1_SET	0xB0
+#define BAL2_SET	0xC0
+#define ISYS_RST	0xFF
+#define SOLS_SET	0x00
+#define ISYS_ARM	0x0F
+
+
 typedef enum {
     VALVE_IDLE,
     VALVE_OPENING,
