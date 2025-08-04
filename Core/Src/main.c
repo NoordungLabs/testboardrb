@@ -53,7 +53,8 @@ ValveController bal1 = {
     .state = VALVE_IDLE,
     .start_time = 0,
     .move_duration = 0,
-	.valvecal = 2.83
+	.valvecal = 2.83,
+	.calibrate = 0
 };
 
 struct Packet *rx;
@@ -72,19 +73,21 @@ ValveController bal2 = {
     .state = VALVE_IDLE,
     .start_time = 0,
     .move_duration = 0,
-	.valvecal = 2.83
+	.valvecal = 2.83,
+	.calibrate = 0
 };
 
 struct Packet Command;
 
 
-Solenoid air1 	=	{GPIO_PIN_2, GPIOD, GPIO_PIN_1, GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
-Solenoid air2 	=	{GPIO_PIN_3, GPIOB, GPIO_PIN_3, GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
-Solenoid liq1 	=	{GPIO_PIN_4, GPIOB, GPIO_PIN_1, GPIOA, GPIO_PIN_0, GPIOA, 0, 0};
-Solenoid liq2 	=	{GPIO_PIN_5, GPIOB, GPIO_PIN_3, GPIOA, GPIO_PIN_2, GPIOA, 0, 0};
-Solenoid ven1 	=	{GPIO_PIN_6, GPIOB, GPIO_PIN_5, GPIOA, GPIO_PIN_4, GPIOA, 0, 0};
-Solenoid ven2 	=	{GPIO_PIN_7, GPIOB, GPIO_PIN_7, GPIOA, GPIO_PIN_6, GPIOA, 0, 0};
-Ignitor ig1 	=	{GPIO_PIN_14, GPIOC, GPIO_PIN_10, GPIOB, GPIO_PIN_2, GPIOB, 0, 0};
+Solenoid air1 	=	{GPIO_PIN_15, GPIOA, GPIO_PIN_1 , GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
+Solenoid air2 	=	{GPIO_PIN_10, GPIOC, GPIO_PIN_3 , GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
+Solenoid liq1 	=	{GPIO_PIN_11, GPIOC, GPIO_PIN_1 , GPIOA, GPIO_PIN_0, GPIOA, 0, 0};
+Solenoid liq2 	=	{GPIO_PIN_12, GPIOC, GPIO_PIN_3 , GPIOA, GPIO_PIN_2, GPIOA, 0, 0};
+Solenoid ven1 	=	{GPIO_PIN_2 , GPIOD, GPIO_PIN_5 , GPIOA, GPIO_PIN_4, GPIOA, 0, 0};
+Solenoid ven2 	=	{GPIO_PIN_3 , GPIOB, GPIO_PIN_7 , GPIOA, GPIO_PIN_6, GPIOA, 0, 0};
+Solenoid NoCo 	=	{GPIO_PIN_4 , GPIOB, GPIO_PIN_1 , GPIOB, GPIO_PIN_0, GPIOB, 0, 0};
+Ignitor ig1 	=	{GPIO_PIN_5 , GPIOB, GPIO_PIN_10, GPIOB, GPIO_PIN_2, GPIOB, 0, 0};
 
 /* USER CODE END PM */
 
@@ -125,7 +128,7 @@ void on_packet_received(struct Packet *p) {
 	switch(p->type){
 	case('c'):
 		switch(p->payload[0]){
-		case(0x00):
+		case(0xA0):
 			(p->payload[1] & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
 			(p->payload[1] & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
 			(p->payload[1] & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
@@ -139,8 +142,14 @@ void on_packet_received(struct Packet *p) {
 			valve_update(&bal1);
 			break;
 		case(0xB1):
+			bal1.calibrate = 1;
+			break;
+		case(0xC0):
 			valve_set_openness(&bal2, p->payload[1]);
 			valve_update(&bal2);
+			break;
+		case(0xC1):
+			bal2.calibrate = 1;
 			break;
 		case(0xFF):
 			NVIC_SystemReset;
@@ -218,7 +227,7 @@ int main(void)
   valve_set_openness(&bal1, 127);
   valve_update(&bal1);
   */
-  //valve_calibrate(&bal1);
+  valve_calibrate(&bal2);
   //valve_calibrate(&bal2);
   //valve_close(&bal1);
   /* USER CODE END 2 */
@@ -229,13 +238,19 @@ int main(void)
   {
 	  CheckAndResumeI2C();
 	  timec = HAL_GetTick();
-	  if (timec - timeref1 > 1000){
+	  if(bal1.calibrate){
+		  valve_calibrate(&bal1);
+	  }
+	  if(bal2.calibrate){
+		  valve_calibrate(&bal2);
+	  }
+	  if (timec - timeref1 > 10000){
 		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
 		  timeref1 = timec;
 		  flag = !flag;
 
 		  if (flag){
-			  valve_set_openness(&bal1, 255);
+			  valve_set_openness(&bal1, 128);
 			  valve_set_openness(&bal2, 128);
 			  /*
 			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
@@ -246,7 +261,7 @@ int main(void)
 
 		  }
 		  else {
-			  valve_set_openness(&bal1, 300);
+			  valve_set_openness(&bal1, 255);
 			  valve_set_openness(&bal2, 0);
 			  /*
 			  HAL_GPIO_WritePin(bal1.busC, bal1.pinC, 0);
@@ -720,39 +735,71 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOG_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7|GPIO_PIN_10
+                          |GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_3|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_9, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PC13 PC14 PC7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PC13 PC14 PC7 PC10
+                           PC11 PC12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_7|GPIO_PIN_10
+                          |GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PC15 PC0 PC1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1;
+  /*Configure GPIO pins : PC15 PC0 PC1 PC2
+                           PC3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2
+                          |GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB11 PB12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+  /*Configure GPIO pin : PG10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA0 PA1 PA2 PA3
+                           PA4 PA5 PA6 PA7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+                          |GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB0 PB1 PB2 PB10
+                           PB11 PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_10
+                          |GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB13 PB14 PB6 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_6|GPIO_PIN_7;
+  /*Configure GPIO pins : PB13 PB14 PB3 PB4
+                           PB5 PB6 PB7 PB8
+                           PB9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_3|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -764,6 +811,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */

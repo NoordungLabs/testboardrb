@@ -37,14 +37,7 @@ typedef struct {
     uint8_t is_opening;
     uint32_t wait_start_time;
     float valvecal;
-    /*
-    uint32_t endstop_check_time;
-	uint32_t direction_change_time;
-	uint32_t cooldown_end_time;    // New variable for cooldown period
-	uint8_t last_direction;
-	*/
-    // Timing control
-    // Timing control
+    uint8_t calibrate;
     uint32_t direction_change_time;
     uint32_t cooldown_end_time;
 
