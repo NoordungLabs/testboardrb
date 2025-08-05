@@ -1,3 +1,4 @@
+"./Core/Src/autorun.o"
 "./Core/Src/i2c_dma_sens.o"
 "./Core/Src/main.o"
 "./Core/Src/nslp_dma.o"

@@ -79,7 +79,7 @@ ValveController bal2 = {
 };
 
 struct Packet Command;
-
+uint8_t byPayload1 = 0;
 
 Solenoid air1 	=	{GPIO_PIN_15, GPIOA, GPIO_PIN_1 , GPIOC, GPIO_PIN_0, GPIOC, 0, 0};
 Solenoid air2 	=	{GPIO_PIN_10, GPIOC, GPIO_PIN_3 , GPIOC, GPIO_PIN_2, GPIOC, 0, 0};
@@ -123,6 +123,7 @@ static void MX_CRC_Init(void);
 uint8_t isCon;
 uint8_t isOn;
 uint8_t ballin;
+uint8_t autoRun;
 
 void on_packet_received(struct Packet *p) {
 
@@ -130,14 +131,7 @@ void on_packet_received(struct Packet *p) {
 	case('c'):
 		switch(p->payload[0]){
 		case(SOLS_SET):
-			(p->payload[1] & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
-			(p->payload[1] & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
-			(p->payload[1] & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
-			(p->payload[1] & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
-			(p->payload[1] & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
-			(p->payload[1] & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
-			(p->payload[1] & (1 << 6)) ? HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 1) : HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 0);
-			(p->payload[1] & (1 << 7)) ? HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 1) : HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 0);
+			byPayload1 = p->payload[1];
 			break;
 		case(BAL1_SET):
 			valve_set_openness(&bal1, p->payload[1]);
@@ -154,10 +148,25 @@ void on_packet_received(struct Packet *p) {
 			bal2.calibrate = 1;
 			break;
 		case(ISYS_RST):
-			NVIC_SystemReset;
+			NVIC_SystemReset();
 			break;
 		case(ISYS_ARM):
 			sysarm = 1;
+			break;
+		}
+		break;
+	case('a'):
+		switch(p->payload[0]){
+		case(AUTO_INI):
+			autoRun = 1;
+			break;
+		case(AUTO_STR):
+			autoRun = 2;
+			break;
+		case(AUTO_EMS):
+			autoRun = 0;
+			byPayload1 = 0;
+			break;
 		}
 
 
@@ -229,9 +238,23 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //autoRun code
+	  if (autoRun){
+		  fautoRun();
+	  }
+
 	  CheckAndResumeI2C();
 
-	  timec = HAL_GetTick();
+	  //set solenoids when it comes to communication and in regard to payload
+	  (byPayload1 & (1 << 0)) ? HAL_GPIO_WritePin(air1.onbus, air1.onpin, 1) : HAL_GPIO_WritePin(air1.onbus, air1.onpin, 0);
+	  (byPayload1 & (1 << 1)) ? HAL_GPIO_WritePin(air2.onbus, air2.onpin, 1) : HAL_GPIO_WritePin(air2.onbus, air2.onpin, 0);
+	  (byPayload1 & (1 << 2)) ? HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 1) : HAL_GPIO_WritePin(liq1.onbus, liq1.onpin, 0);
+	  (byPayload1 & (1 << 3)) ? HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 1) : HAL_GPIO_WritePin(liq2.onbus, liq2.onpin, 0);
+	  (byPayload1 & (1 << 4)) ? HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 1) : HAL_GPIO_WritePin(ven1.onbus, ven1.onpin, 0);
+	  (byPayload1 & (1 << 5)) ? HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 1) : HAL_GPIO_WritePin(ven2.onbus, ven2.onpin, 0);
+	  (byPayload1 & (1 << 6)) ? HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 1) : HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 0);
+	  (byPayload1 & (1 << 7)) ? HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 1) : HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 0);
+
 	  if(bal1.calibrate){
 		  valve_calibrate(&bal1);
 		  bal1.calibrate = 0;
@@ -286,7 +309,7 @@ int main(void)
 	liq2.isFun = HAL_GPIO_ReadPin(liq2.funBus, liq2.funPin);
 	ven1.isFun = HAL_GPIO_ReadPin(ven1.funBus, ven1.funPin);
 	ven2.isFun = HAL_GPIO_ReadPin(ven2.funBus, ven2.funPin);
-	NoCo.isFun = !HAL_GPIO_ReadPin(NoCo.isFun, NoCo.funPin);
+	NoCo.isFun = HAL_GPIO_ReadPin(NoCo.isFun, NoCo.funPin);
 	ig1.isFun  = HAL_GPIO_ReadPin(ig1.funBus, ig1.funPin);
 	(air1.isFun) ? (isFun |= (1 << 0)) : (isFun &= ~(1 << 0));
 	(air2.isFun) ? (isFun |= (1 << 1)) : (isFun &= ~(1 << 1));
@@ -297,7 +320,7 @@ int main(void)
 	(NoCo.isFun) ? (isFun |= (1 << 6)) : (isFun &= ~(1 << 6));
 	(ig1.isFun)  ? (isFun |= (1 << 7)) : (isFun &= ~(1 << 7));
 
-
+	//Updates ball valve position
 	valve_update(&bal1);
 	valve_update(&bal2);
 
@@ -351,7 +374,7 @@ int main(void)
 		.payload = isOn
 	};
 
-  struct Packet SolISFun = {
+  struct Packet SolIsFun = {
 		.type = 0xA9,
 		.size = sizeof(isFun),
 		.payload = isFun
@@ -366,7 +389,8 @@ int main(void)
 	    nslp_send_packet(&Bal2CurrentPos);
 	    nslp_send_packet(&SolIsCon);
 	    nslp_send_packet(&SolIsOn);
-	    nslp_send_packet(&SolISFun);
+	    nslp_send_packet(&SolIsFun);
+	    timepre = timec;
   	  }
 
 

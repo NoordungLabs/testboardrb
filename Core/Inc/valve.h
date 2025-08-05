@@ -17,6 +17,9 @@
 #define ISYS_RST	0xFF
 #define SOLS_SET	0x00
 #define ISYS_ARM	0x0F
+#define AUTO_INI	0x01
+#define AUTO_STR 	0x02
+#define AUTO_EMS	0x03
 
 
 typedef enum {
