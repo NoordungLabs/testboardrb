@@ -174,3 +174,7 @@ struct Packet* receive_packet(UART_HandleTypeDef *huart, CRC_HandleTypeDef *hcrc
 
     return &receiveInstance;
 }
+
+
+
+

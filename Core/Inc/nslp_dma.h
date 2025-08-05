@@ -45,7 +45,7 @@ struct Packet* nslp_get_received_packet(void);
 #define CHECKSUM_SIZE 4
 #define MAX_PAYLOAD_SIZE 255
 #define MAX_PACKET_SIZE (FRAME_START_SIZE + HEADER_SIZE + MAX_PAYLOAD_SIZE + CHECKSUM_SIZE)
-#define TX_QUEUE_LENGTH 4
+#define TX_QUEUE_LENGTH 16
 
 
 struct Packet {

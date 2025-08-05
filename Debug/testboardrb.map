@@ -4245,7 +4245,7 @@ LOAD C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  .igot.plt      0x200001b4        0x0 C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.win32_1.0.0.202411081344/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/thumb/v7e-m+fp/hard/crtbegin.o
                 0x200001b4                        . = ALIGN (0x4)
 
-.bss            0x200001b4      0xa04 load address 0x08008ea8
+.bss            0x200001b4      0xa34 load address 0x08008ea8
                 0x200001b4                        _sbss = .
                 0x200001b4                        __bss_start__ = _sbss
  *(.bss)
@@ -4326,33 +4326,33 @@ LOAD C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  *fill*         0x20000a92        0x2 
  .bss.rx_callback
                 0x20000a94        0x4 ./Core/Src/nslp_dma.o
- .bss.tx_queue  0x20000a98       0x10 ./Core/Src/nslp_dma.o
- .bss.tx_head   0x20000aa8        0x1 ./Core/Src/nslp_dma.o
- .bss.tx_tail   0x20000aa9        0x1 ./Core/Src/nslp_dma.o
- .bss.tx_count  0x20000aaa        0x1 ./Core/Src/nslp_dma.o
- .bss.tx_busy   0x20000aab        0x1 ./Core/Src/nslp_dma.o
+ .bss.tx_queue  0x20000a98       0x40 ./Core/Src/nslp_dma.o
+ .bss.tx_head   0x20000ad8        0x1 ./Core/Src/nslp_dma.o
+ .bss.tx_tail   0x20000ad9        0x1 ./Core/Src/nslp_dma.o
+ .bss.tx_count  0x20000ada        0x1 ./Core/Src/nslp_dma.o
+ .bss.tx_busy   0x20000adb        0x1 ./Core/Src/nslp_dma.o
  .bss.rx_packet
-                0x20000aac        0x8 ./Core/Src/nslp_dma.o
+                0x20000adc        0x8 ./Core/Src/nslp_dma.o
  .bss.rx_payload
-                0x20000ab4       0xff ./Core/Src/nslp_dma.o
- *fill*         0x20000bb3        0x1 
- .bss.uwTick    0x20000bb4        0x4 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.o
-                0x20000bb4                uwTick
+                0x20000ae4       0xff ./Core/Src/nslp_dma.o
+ *fill*         0x20000be3        0x1 
+ .bss.uwTick    0x20000be4        0x4 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.o
+                0x20000be4                uwTick
  *(COMMON)
-                0x20000bb8                        . = ALIGN (0x4)
-                0x20000bb8                        _ebss = .
-                0x20000bb8                        __bss_end__ = _ebss
+                0x20000be8                        . = ALIGN (0x4)
+                0x20000be8                        _ebss = .
+                0x20000be8                        __bss_end__ = _ebss
 
 ._user_heap_stack
-                0x20000bb8      0x600 load address 0x08008ea8
-                0x20000bb8                        . = ALIGN (0x8)
+                0x20000be8      0x600 load address 0x08008ea8
+                0x20000be8                        . = ALIGN (0x8)
                 [!provide]                        PROVIDE (end = .)
-                0x20000bb8                        PROVIDE (_end = .)
-                0x20000db8                        . = (. + _Min_Heap_Size)
- *fill*         0x20000bb8      0x200 
-                0x200011b8                        . = (. + _Min_Stack_Size)
- *fill*         0x20000db8      0x400 
-                0x200011b8                        . = ALIGN (0x8)
+                0x20000be8                        PROVIDE (_end = .)
+                0x20000de8                        . = (. + _Min_Heap_Size)
+ *fill*         0x20000be8      0x200 
+                0x200011e8                        . = (. + _Min_Stack_Size)
+ *fill*         0x20000de8      0x400 
+                0x200011e8                        . = ALIGN (0x8)
 
 /DISCARD/
  libc.a(*)
@@ -4690,31 +4690,31 @@ LOAD C:/ST/STM32CubeIDE_1.17.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  .debug_line    0x0001139a     0x35f0 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.o
  .debug_line    0x0001498a      0xd00 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.o
 
-.debug_str      0x00000000    0xba75b
- .debug_str     0x00000000    0xba75b ./Core/Src/autorun.o
-                              0xb2172 (size before relaxing)
- .debug_str     0x000ba75b    0xb2a81 ./Core/Src/i2c_dma_sens.o
- .debug_str     0x000ba75b    0xb3934 ./Core/Src/main.o
- .debug_str     0x000ba75b    0xb5c27 ./Core/Src/nslp_dma.o
- .debug_str     0x000ba75b    0xb3328 ./Core/Src/stm32g4xx_hal_msp.o
- .debug_str     0x000ba75b    0xb2a46 ./Core/Src/stm32g4xx_it.o
- .debug_str     0x000ba75b    0xb2233 ./Core/Src/system_stm32g4xx.o
- .debug_str     0x000ba75b    0xb23bd ./Core/Src/valve.o
- .debug_str     0x000ba75b       0x8e ./Core/Startup/startup_stm32g431rbtx.o
- .debug_str     0x000ba75b    0xb2d72 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.o
- .debug_str     0x000ba75b    0xb2a2e ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.o
- .debug_str     0x000ba75b    0xb22ea ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_crc.o
- .debug_str     0x000ba75b    0xb2290 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_crc_ex.o
- .debug_str     0x000ba75b    0xb260d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma.o
- .debug_str     0x000ba75b    0xb24ea ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma_ex.o
- .debug_str     0x000ba75b    0xb23be ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_gpio.o
- .debug_str     0x000ba75b    0xb353d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_i2c.o
- .debug_str     0x000ba75b    0xb2852 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_i2c_ex.o
- .debug_str     0x000ba75b    0xb2721 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.o
- .debug_str     0x000ba75b    0xb292c ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.o
- .debug_str     0x000ba75b    0xb292d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc_ex.o
- .debug_str     0x000ba75b    0xb31ee ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.o
- .debug_str     0x000ba75b    0xb29ec ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.o
+.debug_str      0x00000000    0xba75c
+ .debug_str     0x00000000    0xba75c ./Core/Src/autorun.o
+                              0xb2173 (size before relaxing)
+ .debug_str     0x000ba75c    0xb2a82 ./Core/Src/i2c_dma_sens.o
+ .debug_str     0x000ba75c    0xb3935 ./Core/Src/main.o
+ .debug_str     0x000ba75c    0xb5c28 ./Core/Src/nslp_dma.o
+ .debug_str     0x000ba75c    0xb3328 ./Core/Src/stm32g4xx_hal_msp.o
+ .debug_str     0x000ba75c    0xb2a46 ./Core/Src/stm32g4xx_it.o
+ .debug_str     0x000ba75c    0xb2233 ./Core/Src/system_stm32g4xx.o
+ .debug_str     0x000ba75c    0xb23bd ./Core/Src/valve.o
+ .debug_str     0x000ba75c       0x8e ./Core/Startup/startup_stm32g431rbtx.o
+ .debug_str     0x000ba75c    0xb2d72 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal.o
+ .debug_str     0x000ba75c    0xb2a2e ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.o
+ .debug_str     0x000ba75c    0xb22ea ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_crc.o
+ .debug_str     0x000ba75c    0xb2290 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_crc_ex.o
+ .debug_str     0x000ba75c    0xb260d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma.o
+ .debug_str     0x000ba75c    0xb24ea ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dma_ex.o
+ .debug_str     0x000ba75c    0xb23be ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_gpio.o
+ .debug_str     0x000ba75c    0xb353d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_i2c.o
+ .debug_str     0x000ba75c    0xb2852 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_i2c_ex.o
+ .debug_str     0x000ba75c    0xb2721 ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_pwr_ex.o
+ .debug_str     0x000ba75c    0xb292c ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc.o
+ .debug_str     0x000ba75c    0xb292d ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_rcc_ex.o
+ .debug_str     0x000ba75c    0xb31ee ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart.o
+ .debug_str     0x000ba75c    0xb29ec ./Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_uart_ex.o
 
 .comment        0x00000000       0x43
  .comment       0x00000000       0x43 ./Core/Src/autorun.o

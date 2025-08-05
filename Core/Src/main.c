@@ -34,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DELAY 300 //Per baud rate 9600: 400ms 19200:200ms
+#define DELAY 400 //Per baud rate 9600: 400ms 19200:200ms
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -369,7 +369,7 @@ int main(void)
 		.size = sizeof(isOn),
 		.payload = &isOn
 	};
-  uint8_t arisFun[2] = {(uint8_t) 'c', isFun};
+  uint8_t arisFun[2] = {0x69, isFun};
   struct Packet SolIsFun = {
 		.type = 'c',
 		.size = 2,
