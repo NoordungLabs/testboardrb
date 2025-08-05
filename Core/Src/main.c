@@ -342,7 +342,7 @@ int main(void)
   struct Packet Bal1CurrentPos = {
 		.type = 0xA4,
 		.size = sizeof(bal1.current_openness),
-		.payload = bal1.current_openness
+		.payload = &bal1.current_openness
 	};
 
 /*
@@ -355,25 +355,25 @@ int main(void)
   struct Packet Bal2CurrentPos = {
 		.type = 0xA6,
 		.size = sizeof(bal2.current_openness),
-		.payload = bal2.current_openness
+		.payload = &bal2.current_openness
 	};
 
   struct Packet SolIsCon = {
 		.type = 0xA7,
 		.size = sizeof(isCon),
-		.payload = isCon
+		.payload = &isCon
 	};
 
   struct Packet SolIsOn = {
 		.type = 0xA8,
 		.size = sizeof(isOn),
-		.payload = isOn
+		.payload = &isOn
 	};
-
+  uint8_t arisFun[2] = {(uint8_t) 'c', isFun};
   struct Packet SolIsFun = {
-		.type = 0x69,
-		.size = sizeof(isFun),
-		.payload = isFun
+		.type = 'c',
+		.size = 2,
+		.payload = arisFun
 	};
 
   timec = HAL_GetTick();
