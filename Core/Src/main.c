@@ -120,8 +120,6 @@ static void MX_CRC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t isCon;
-uint8_t isOn;
 uint8_t ballin;
 uint8_t autoRun;
 
@@ -130,27 +128,25 @@ void on_packet_received(struct Packet *p) {
 	switch(p->type){
 	case('c'):
 		switch(p->payload[0]){
-		case(SOLS_SET):
+		case(SOLS_SET): //SOLS_SET
 			byPayload1 = p->payload[1];
 			break;
-		case(BAL1_SET):
+		case(BAL1_SET): //BAL1_SET
 			valve_set_openness(&bal1, p->payload[1]);
-			valve_update(&bal1);
 			break;
-		case(BAL1_CAL):
+		case(BAL1_CAL): //BAL1_CAL
 			bal1.calibrate = 1;
 			break;
-		case(BAL2_SET):
+		case(BAL2_SET):	//BAL2_SET
 			valve_set_openness(&bal2, p->payload[1]);
-			valve_update(&bal2);
 			break;
-		case(BAL2_CAL):
+		case(BAL2_CAL): //BAL2_CAL
 			bal2.calibrate = 1;
 			break;
-		case(ISYS_RST):
+		case(ISYS_RST):	//ISYS_RST
 			NVIC_SystemReset();
 			break;
-		case(ISYS_ARM):
+		case(ISYS_ARM):	//ISYSARM
 			sysarm = 1;
 			break;
 		}
@@ -168,7 +164,6 @@ void on_packet_received(struct Packet *p) {
 			byPayload1 = 0;
 			break;
 		}
-
 
 	break;
 	}
@@ -272,6 +267,7 @@ int main(void)
 	liq2.isOn = HAL_GPIO_ReadPin(liq2.onbus, liq2.onpin);
 	ven1.isOn = HAL_GPIO_ReadPin(ven1.onbus, ven1.onpin);
 	ven2.isOn = HAL_GPIO_ReadPin(ven2.onbus, ven2.onpin);
+	NoCo.isOn = HAL_GPIO_ReadPin(NoCo.onbus, NoCo.onpin);
 	ig1.isOn  = HAL_GPIO_ReadPin(ig1.onbus, ig1.onpin);
 	(air1.isOn) ? (isOn |= (1 << 0)) : (isOn &= ~(1 << 0));
 	(air2.isOn) ? (isOn |= (1 << 1)) : (isOn &= ~(1 << 1));
@@ -309,7 +305,7 @@ int main(void)
 	liq2.isFun = HAL_GPIO_ReadPin(liq2.funBus, liq2.funPin);
 	ven1.isFun = HAL_GPIO_ReadPin(ven1.funBus, ven1.funPin);
 	ven2.isFun = HAL_GPIO_ReadPin(ven2.funBus, ven2.funPin);
-	NoCo.isFun = HAL_GPIO_ReadPin(NoCo.isFun, NoCo.funPin);
+	NoCo.isFun = HAL_GPIO_ReadPin(NoCo.funBus, NoCo.funPin);
 	ig1.isFun  = HAL_GPIO_ReadPin(ig1.funBus, ig1.funPin);
 	(air1.isFun) ? (isFun |= (1 << 0)) : (isFun &= ~(1 << 0));
 	(air2.isFun) ? (isFun |= (1 << 1)) : (isFun &= ~(1 << 1));
@@ -375,11 +371,12 @@ int main(void)
 	};
 
   struct Packet SolIsFun = {
-		.type = 0xA9,
+		.type = 0x69,
 		.size = sizeof(isFun),
 		.payload = isFun
 	};
 
+  timec = HAL_GetTick();
   if (timec - timepre > DELAY){
 	  	nslp_send_packet(&Temperature);
 	    nslp_send_packet(&Pressure);
@@ -388,7 +385,7 @@ int main(void)
 	    //nslp_send_packet(&Bal2State);
 	    nslp_send_packet(&Bal2CurrentPos);
 	    nslp_send_packet(&SolIsCon);
-	    nslp_send_packet(&SolIsOn);
+	    //nslp_send_packet(&SolIsOn);
 	    nslp_send_packet(&SolIsFun);
 	    timepre = timec;
   	  }
