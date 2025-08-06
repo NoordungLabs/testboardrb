@@ -84,8 +84,8 @@ all: main-build
 main-build: testboardrb.elf secondary-outputs
 
 # Tool invocations
-testboardrb.elf testboardrb.map: $(OBJS) $(USER_OBJS) C:\Users\Leon\STM32CubeIDE\workspace_1.12.1\testboardrb\testboardrb\STM32G431RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "testboardrb.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Leon\STM32CubeIDE\workspace_1.12.1\testboardrb\testboardrb\STM32G431RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testboardrb.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+testboardrb.elf testboardrb.map: $(OBJS) $(USER_OBJS) C:\Users\leonu\Documents\404\testboardrb\STM32G431RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "testboardrb.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\leonu\Documents\404\testboardrb\STM32G431RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="testboardrb.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
