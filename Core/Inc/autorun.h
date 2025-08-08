@@ -12,14 +12,14 @@
 #include "i2c_dma_sens.h"
 
 typedef enum {
-	AUTO_IDLE,
-	AUTO_FILL,
-	AUTO_WAIT,
-	AUTO_IGNT,
-	AUTO_FLAM,
-	AUTO_DGAS,
-	AUTO_VENT,
-	AUTO_STOP
+	IDLE,
+	FILL_TANKS,
+	WAIT_FOR_USER,
+	IGNITE,
+	FLAME,
+	DEGAS,
+	VENT,
+	STOP
 } AutoRunState;
 
 void fautoRun();
