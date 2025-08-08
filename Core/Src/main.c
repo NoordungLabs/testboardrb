@@ -35,6 +35,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define DELAY 400 //Per baud rate 9600: 400ms 19200:200ms
+#define CAL_TIMEOUT 60000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -122,6 +123,10 @@ static void MX_CRC_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t ballin;
 uint8_t autoRun;
+uint8_t lastTime = 0;
+uint8_t lastTime2 =0;
+uint8_t first = 0;
+uint8_t first2 =0;
 
 void on_packet_received(struct Packet *p) {
 
@@ -135,13 +140,21 @@ void on_packet_received(struct Packet *p) {
 			valve_set_openness(&bal1, p->payload[1]);
 			break;
 		case(BAL1_CAL): //BAL1_CAL
-			bal1.calibrate = 1;
+			if (HAL_GetTick() - lastTime > CAL_TIMEOUT || !first){
+				bal1.calibrate = 1;
+				first = 1;
+				lastTime  = HAL_GetTick();
+			}
 			break;
 		case(BAL2_SET):	//BAL2_SET
 			valve_set_openness(&bal2, p->payload[1]);
 			break;
 		case(BAL2_CAL): //BAL2_CAL
-			bal2.calibrate = 1;
+			if (HAL_GetTick() - lastTime2 > CAL_TIMEOUT || !first2){
+				bal2.calibrate = 1;
+				first2 = 1;
+				lastTime2  = HAL_GetTick();
+			}
 			break;
 		case(ISYS_RST):	//ISYS_RST
 			NVIC_SystemReset();
@@ -250,11 +263,11 @@ int main(void)
 	  (byPayload1 & (1 << 6)) ? HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 1) : HAL_GPIO_WritePin(NoCo.onbus, NoCo.onpin, 0);
 	  (byPayload1 & (1 << 7)) ? HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 1) : HAL_GPIO_WritePin(ig1.onbus,  ig1.onpin , 0);
 
-	  if(bal1.calibrate){
+	  if(bal1.calibrate == 1){
 		  valve_calibrate(&bal1);
 		  bal1.calibrate = 0;
 	  }
-	  if(bal2.calibrate){
+	  if(bal2.calibrate == 1){
 		  valve_calibrate(&bal2);
 		  bal2.calibrate = 0;
 	  }
